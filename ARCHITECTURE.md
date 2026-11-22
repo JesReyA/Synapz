@@ -1,4 +1,4 @@
-# ARCHITECTURE.md — Synapz + Feyn
+﻿# ARCHITECTURE.md — Synapz + Feyn
 
 Synapz es una plataforma educativa adaptativa. Feyn es su asistente de IA (Técnica Feynman y coach de lectura).
 Este documento fija la estructura del monorepo y las reglas de modularidad. Los requisitos están en `requirements.md` y los contratos de datos y API en `API_CONTRACT.md`.
@@ -10,7 +10,7 @@ Estado real del repositorio y destino:
 ```
 Synapz/
 ├── frontend/
-│   └── web/                  # App React (ya existe). Todas las rutas "frontend/..." de este documento son relativas a esta carpeta.
+│   └── web/                  # App React
 │       ├── DESIGN.md         # Fuente única de verdad visual
 │       ├── public/           # synapz.png, feyn.png
 │       └── src/
@@ -23,7 +23,7 @@ Synapz/
 └── .kiro/steering/synapz-rules.md
 ```
 
-> Nota: el frontend vive en `frontend/web/`, no en `frontend/`. Si se mueve a `frontend/`, actualizar estas rutas, `DESIGN.md` y el steering en el mismo cambio.
+Las rutas `src/...`, `public/...` y `DESIGN.md` de este documento son relativas a `frontend/web/`.
 
 Despliegue: frontend en **Vercel** (raíz del proyecto `frontend/web`), backend en **Railway o Render**, datos en **Supabase**.
 
@@ -39,7 +39,7 @@ Despliegue: frontend en **Vercel** (raíz del proyecto `frontend/web`), backend 
 - `frontend/web/DESIGN.md` es la fuente única de verdad visual: tokens de color, tipografía, geometría y layout.
 - Logos: `public/synapz.png` (solo isotipo, sidebar) y `public/feyn.png` (FAB y cabecera del chat). Se referencian siempre como `/synapz.png` y `/feyn.png`.
 - Tema oscuro manual con la clase `.dark` (`@custom-variant dark (&:where(.dark, .dark *));` en `src/index.css`). Estado del tema en `App.tsx`, persistido en `localStorage`.
-- **Acento de Feyn: ámbar `#FBBF24`** (`amber-400`) para el FAB y la cabecera del chat. Ver sección 7: `DESIGN.md` y el código aún usan azul y hay que actualizarlos.
+- **Acento de Feyn: ámbar `#FBBF24`** (`amber-400`) para el FAB y la cabecera del chat. El código (`FeynChatFab.tsx`) ya lo usa. `DESIGN.md` debe reflejarlo (ver sección 7).
 
 ### Organización de `src/`
 
@@ -125,11 +125,11 @@ Implementación obligatoria:
 5. **Juego rápido:** el frontend escribe el puntaje en `math_game_scores` a través del backend, y todos los clientes del aula lo reciben por Realtime.
 6. **Anti-trampa:** el frontend detecta `visibilitychange`, pérdida de foco y atajos de captura durante el diagnóstico y manda los eventos con la entrega. El backend los guarda y los marca en el reporte. El navegador no puede impedir una captura de pantalla: la regla es detectar, avisar, invalidar el intento y registrarlo.
 
-## 7. Discrepancias abiertas (resolver antes de construir más)
+## 7. Pendientes abiertos
 
-1. **Acento ámbar de Feyn:** esta arquitectura define `#FBBF24`. `frontend/web/DESIGN.md` y `FeynChatFab.tsx` usan azul (`bg-blue-500`) para el FAB y la cabecera. Hay que actualizar ambos.
-2. **Ruta del frontend:** `frontend/web/` frente a `frontend/`.
-3. **TypeScript estricto:** `strict` no está activo en `tsconfig.app.json`.
-4. **Carpetas ausentes en `src/`:** `pages/`, `services/`, `hooks/`, `types/`.
-5. **`backend/requirements.txt`** contiene dependencias ajenas al proyecto.
-6. **`.env` en ambas carpetas:** confirmar que están ignoradas por git y que no contienen claves reales versionadas.
+1. **`frontend/web/DESIGN.md`:** todavía describe el FAB de Feyn en azul (`bg-blue-500`, secciones 1.2, 3.3 y 5.2). Actualizarlo al ámbar `#FBBF24`. En `FeynChatFab.tsx` quedan clases azules sueltas (`hover:bg-blue-600`, `shadow-blue-500/30`) que deben pasar a ámbar.
+2. **TypeScript estricto:** `strict` no está activo en `tsconfig.app.json`.
+3. **`backend/requirements.txt`** contiene dependencias ajenas al proyecto.
+
+Resueltos: ruta del frontend fijada en `frontend/web/`, carpetas `pages/`, `services/`, `hooks/` y `types/` creadas, `.env` fuera de git.
+
