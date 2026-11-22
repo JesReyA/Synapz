@@ -1,0 +1,35 @@
+# Entornos virtuales (¡Muy importante, pesa cientos de MB!)
+.venv/
+venv/
+env/
+ENV/
+
+# Variables de entorno y secretos (¡Nunca subas tus API Keys a GitHub!)
+.env
+.env.*
+!.env.example
+
+# Archivos temporales y caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Bases de datos locales (por si usas SQLite en el hackathon)
+*.db
+*.sqlite
+*.sqlite3
+
+# Caché de pruebas y linters
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Editores (VS Code / PyCharm) y Sistema Operativo (Windows / Mac)
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
