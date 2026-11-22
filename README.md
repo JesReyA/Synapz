@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./frontend/public/synapz.png" alt="Synapz Logo" width="90" />
+  <img src="./frontend/web/public/synapz.png" alt="Synapz Logo" width="90" />
   <h1>Synapz & Feyn</h1>
   <p><strong>El temario de tu profesor, traducido a tu mundo. No lo memorices: domínalo explicándoselo a Feyn.</strong></p>
 
