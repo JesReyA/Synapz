@@ -4,6 +4,7 @@ import { TopHeader } from "./components/TopHeader.tsx";
 import { FeynChatFab } from "./components/FeynChatFab.tsx";
 import { StudentHome } from "./pages/StudentHome.tsx";
 import { MisClasesPage } from "./pages/MisClasesPage.tsx";
+import { RetosPage } from "./pages/RetosPage.tsx";
 import { PlaceholderPage } from "./pages/PlaceholderPage.tsx";
 import type { FeynTopicContext } from "./types/classes.ts";
 
@@ -62,7 +63,7 @@ export default function App() {
             />
             {view === "inicio" && <StudentHome dark={dark} />}
             {view === "clases" && <MisClasesPage onExplainToFeyn={explainToFeyn} />}
-            {view === "retos" && <PlaceholderPage title="Retos" />}
+            {view === "retos" && <RetosPage />}
             {view === "aprender" && <PlaceholderPage title="Aprender" />}
             {view === "progreso" && <PlaceholderPage title="Progreso" />}
           </div>
