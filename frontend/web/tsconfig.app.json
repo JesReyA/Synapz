@@ -15,6 +15,7 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    "strict": true,
 
     /* Linting */
     "noUnusedLocals": true,
@@ -24,3 +25,5 @@
   },
   "include": ["src"]
 }
+
+

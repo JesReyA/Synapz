@@ -1,16 +1,29 @@
 ﻿import { Bell, Sun, Moon } from "lucide-react";
 
-type TopHeaderProps = { name?: string; dark: boolean; onToggleTheme: () => void };
+type TopHeaderProps = {
+  name?: string;
+  /** Si se omite, se muestra el saludo "¡Hola, {name}!". */
+  title?: string;
+  subtitle?: string;
+  dark: boolean;
+  onToggleTheme: () => void;
+};
 
-export function TopHeader({ name = "Alex", dark, onToggleTheme }: TopHeaderProps) {
+export function TopHeader({
+  name = "Alex",
+  title,
+  subtitle = "Vamos paso a paso. Hoy tienes nuevas oportunidades para aprender.",
+  dark,
+  onToggleTheme,
+}: TopHeaderProps) {
   return (
     <header className="flex items-start justify-between gap-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl dark:text-white">
-          ¡Hola, {name}!
+          {title ?? `¡Hola, ${name}!`}
         </h1>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-          Vamos paso a paso. Hoy tienes nuevas oportunidades para aprender.
+          {subtitle}
         </p>
       </div>
       <div className="flex items-center gap-3">
@@ -39,4 +52,6 @@ export function TopHeader({ name = "Alex", dark, onToggleTheme }: TopHeaderProps
     </header>
   );
 }
+
+
 
