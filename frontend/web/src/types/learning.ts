@@ -1,11 +1,13 @@
 /**
  * Tipos de "Aprender".
- * Los tipos de §2.2 (lecciones), §2.3 (lecturas) y §2.4 (audio) reflejan API_CONTRACT.md campo por campo.
- * Los marcados "solo cliente" (tarjetas, enfoque diario, nivelación) no tienen endpoint todavía.
+ * Reflejan API_CONTRACT.md campo por campo: §2.2 (lecciones), §2.3 (lecturas), §2.4 (audio),
+ * §2.13 (tarjetas y enfoque diario) y §2.14 (nivelación). Los tipos de "Derivados" y "Navegador"
+ * no viajan por la red.
  */
-import type { AdaptLessonResponse, FeynTopicContext, Modality, SubjectAccent } from "./classes.ts";
+import type { AdaptLessonResponse, FeynTopicContext, Modality } from "./classes.ts";
+import type { SubjectArea } from "./progress.ts";
 
-export type { AdaptLessonResponse, FeynTopicContext, Modality };
+export type { AdaptLessonResponse, FeynTopicContext, Modality, SubjectArea };
 
 /* ---------- Contrato: lecturas (§2.3) ---------- */
 
@@ -63,33 +65,49 @@ export interface EvaluateAudioResponse {
   improved: boolean;
 }
 
-/* ---------- Solo cliente: paquetes mock por lección y lectura ---------- */
+/* ---------- Contrato: tarjetas y enfoque diario (§2.13) ---------- */
 
-/** Una explicación por modalidad. En producción cada una es una llamada a `POST /api/lessons/adapt`. */
-export interface LessonBundle {
+export type StudyCategory = "lessons" | "reading" | "remedial";
+export type StudyBadge = "visual" | "text" | "audio" | "live_voice" | "practice";
+
+export interface StudyCard {
   id: string;
-  topic: FeynTopicContext;
-  preferred: Modality;
-  lessons: Record<Modality, AdaptLessonResponse>;
+  category: StudyCategory;
+  classroom_id: string;
+  topic_id: string;
+  topic_title: string;
+  subject: string; // `classrooms.subject`
+  subject_area: SubjectArea;
+  title: string;
+  description: string;
+  badge: StudyBadge;
+  progress: number; // 0-100
+  minutes: number; // duración estimada
+  remedial_set_id: string | null; // solo si category = "remedial"
 }
 
-/** Texto de lectura con sus dos modos de ejercicio. */
-export interface ReadingBundle {
-  id: string;
-  topic: FeynTopicContext;
-  comprehension: GenerateReadingResponse;
-  cloze: GenerateReadingResponse;
+export interface DailyFocus {
+  card_id: string; // id de una tarjeta de `cards`
+  headline: string;
+  reason: string;
+  based_on: string[];
 }
 
-/* ---------- Solo cliente: nivelación sin reloj ---------- */
+export interface LearningHomeResponse {
+  generated_at: string;
+  daily_focus: DailyFocus | null;
+  cards: StudyCard[];
+}
 
-export type RemedialSkill = "addition" | "fractions";
+/* ---------- Contrato: nivelación sin reloj (§2.14) ---------- */
+
+export type RemedialSkill = "addition" | "fractions"; // ampliable
 
 export interface RemedialExercise {
   id: string;
   skill: RemedialSkill;
   prompt: string;
-  /** Respuestas válidas ya normalizadas (minúsculas, sin espacios). */
+  /** En minúsculas y sin espacios; el decimal usa punto. */
   accepted_answers: string[];
   display_answer: string;
   hint_title: string;
@@ -100,40 +118,42 @@ export interface RemedialExercise {
 export interface RemedialSet {
   id: string;
   title: string;
-  /** Tema previo (prerrequisito) que se refuerza. */
-  prerequisite: FeynTopicContext;
+  prerequisite: { classroom_id: string; topic_id: string; title: string };
   exercises: RemedialExercise[];
 }
 
-/* ---------- Solo cliente: tarjetas de estudio y enfoque diario ---------- */
+export interface SubmitRemedialResultRequest {
+  first_try_correct: number;
+  total: number;
+}
 
-export type StudyCategory = "lessons" | "reading" | "remedial";
+export interface SubmitRemedialResultResponse {
+  set_id: string;
+  progress: number;
+  best_first_try_pct: number;
+}
+
+/* ---------- Derivados en el cliente ---------- */
+
 export type StudyFilter = "all" | StudyCategory;
-export type ModalityBadge = "visual" | "audio" | "live_voice" | "practice";
 
-export interface StudyCard {
+/** Una explicación por modalidad. En producción cada una es una llamada a `POST /api/lessons/adapt`. */
+export interface LessonBundle {
   id: string;
-  category: StudyCategory;
-  /** id del `LessonBundle`, `ReadingBundle` o `RemedialSet` según `category`. */
-  ref_id: string;
-  subject: string;
-  accent: SubjectAccent;
-  title: string;
-  description: string;
-  badge: ModalityBadge;
-  progress: number; // 0-100
-  minutes: number;
   topic: FeynTopicContext;
+  preferred: Modality;
+  lessons: Record<Modality, AdaptLessonResponse>;
 }
 
-export interface DailyFocus {
-  card_id: string;
-  headline: string;
-  reason: string;
-  based_on: string[];
+/** Texto de lectura con sus dos modos. En producción son dos llamadas a `POST /api/reading/generate`. */
+export interface ReadingBundle {
+  id: string;
+  topic: FeynTopicContext;
+  comprehension: GenerateReadingResponse;
+  cloze: GenerateReadingResponse;
 }
 
-/* ---------- Grabación de voz (navegador) ---------- */
+/* ---------- Navegador (grabación de voz) ---------- */
 
 export type RecorderStatus = "idle" | "requesting" | "recording" | "stopped" | "denied";
 

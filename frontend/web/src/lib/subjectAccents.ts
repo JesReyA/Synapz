@@ -1,6 +1,7 @@
-﻿import type { LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { BookOpen, Calculator, FlaskConical } from "lucide-react";
 import type { SubjectAccent } from "../types/classes.ts";
+import type { SubjectArea } from "../types/progress.ts";
 
 export const ACCENTS: Record<SubjectAccent, { icon: LucideIcon; tile: string; ring: string }> = {
   blue: {
@@ -18,4 +19,11 @@ export const ACCENTS: Record<SubjectAccent, { icon: LucideIcon; tile: string; ri
     tile: "bg-teal-100 text-teal-600 dark:bg-teal-500/20 dark:text-teal-400",
     ring: "ring-teal-500",
   },
+};
+
+/** Color de acento de cada materia (DESIGN.md §3.3). */
+export const ACCENT_BY_AREA: Record<SubjectArea, SubjectAccent> = {
+  math: "blue",
+  reading: "violet",
+  science: "teal",
 };

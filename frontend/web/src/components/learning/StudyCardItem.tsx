@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
-import { Clock, Eye, Headphones, Mic, Play, Target } from "lucide-react";
-import { ACCENTS } from "../../lib/subjectAccents.ts";
-import type { ModalityBadge, StudyCard } from "../../types/learning.ts";
+import { BookOpen, Clock, Eye, Headphones, Mic, Play, Target } from "lucide-react";
+import { ACCENTS, ACCENT_BY_AREA } from "../../lib/subjectAccents.ts";
+import type { StudyBadge, StudyCard } from "../../types/learning.ts";
 import { AMBER_BUTTON } from "./styles.ts";
 
 interface StudyCardItemProps {
@@ -10,8 +10,9 @@ interface StudyCardItemProps {
   onExplainToFeyn: (card: StudyCard) => void;
 }
 
-const BADGES: Record<ModalityBadge, { label: string; icon: LucideIcon; tone: string }> = {
+const BADGES: Record<StudyBadge, { label: string; icon: LucideIcon; tone: string }> = {
   visual: { label: "Visual", icon: Eye, tone: "bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300" },
+  text: { label: "Lectura", icon: BookOpen, tone: "bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-200" },
   audio: { label: "Audio", icon: Headphones, tone: "bg-violet-100 text-violet-600 dark:bg-violet-400/15 dark:text-violet-300" },
   live_voice: { label: "Voz en vivo", icon: Mic, tone: "bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300" },
   practice: { label: "Práctica", icon: Target, tone: "bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300" },
@@ -20,7 +21,7 @@ const BADGES: Record<ModalityBadge, { label: string; icon: LucideIcon; tone: str
 const ACTION_LABEL = { lessons: "Estudiar", reading: "Leer y practicar", remedial: "Practicar" } as const;
 
 export function StudyCardItem({ card, onOpen, onExplainToFeyn }: StudyCardItemProps) {
-  const accent = ACCENTS[card.accent];
+  const accent = ACCENTS[ACCENT_BY_AREA[card.subject_area]];
   const Icon = accent.icon;
   const badge = BADGES[card.badge];
   const BadgeIcon = badge.icon;

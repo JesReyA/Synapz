@@ -33,7 +33,7 @@ export function LiveLeaderboard({ entries }: LiveLeaderboardProps) {
             <span className="grid size-6 shrink-0 place-items-center text-xs font-bold text-slate-500 tabular-nums dark:text-slate-400">
               {i === 0 ? <Crown className="size-4 text-amber-500" strokeWidth={2} aria-label="Primer lugar" /> : i + 1}
             </span>
-            <span className="min-w-0 flex-1 truncate font-medium text-slate-900 dark:text-white">{entry.name}</span>
+            <span className="min-w-0 flex-1 truncate font-medium text-slate-900 dark:text-white">{entry.name}{entry.is_me ? " (tú)" : ""}</span>
             <span className="font-semibold text-slate-700 tabular-nums dark:text-slate-200">
               {entry.points.toLocaleString("es-MX")}
               <span className="ml-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400"> pts</span>

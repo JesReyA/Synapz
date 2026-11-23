@@ -6,11 +6,10 @@ import { RemedialPracticeModal } from "../components/learning/RemedialPracticeMo
 import { StudyCardItem } from "../components/learning/StudyCardItem.tsx";
 import { StudyFilterPills } from "../components/learning/StudyFilterPills.tsx";
 import {
-  MOCK_DAILY_FOCUS,
+  MOCK_LEARNING_HOME,
   MOCK_LESSON_BUNDLES,
   MOCK_READING_BUNDLES,
   MOCK_REMEDIAL_SETS,
-  MOCK_STUDY_CARDS,
   mockEvaluateAudio,
 } from "../data/mockLearning.ts";
 import type { FeynTopicContext, StudyCard, StudyFilter } from "../types/learning.ts";
@@ -20,13 +19,14 @@ interface AprenderPageProps {
 }
 
 export function AprenderPage({ onExplainToFeyn }: AprenderPageProps) {
-  const [cards, setCards] = useState<StudyCard[]>(MOCK_STUDY_CARDS);
+  const [cards, setCards] = useState<StudyCard[]>(MOCK_LEARNING_HOME.cards);
   const [filter, setFilter] = useState<StudyFilter>("all");
   const [openId, setOpenId] = useState<string | null>(null);
 
+  const focus = MOCK_LEARNING_HOME.daily_focus;
   const open = cards.find((c) => c.id === openId) ?? null;
   const visible = cards.filter((c) => filter === "all" || c.category === filter);
-  const focusCard = cards.find((c) => c.id === MOCK_DAILY_FOCUS.card_id) ?? cards[0];
+  const focusCard = cards.find((c) => c.id === focus?.card_id);
   const counts: Record<StudyFilter, number> = {
     all: cards.length,
     lessons: cards.filter((c) => c.category === "lessons").length,
@@ -38,9 +38,9 @@ export function AprenderPage({ onExplainToFeyn }: AprenderPageProps) {
     setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, progress: Math.max(c.progress, percent) } : c)));
   }
 
-  const lessonBundle = open?.category === "lessons" ? MOCK_LESSON_BUNDLES.find((b) => b.id === open.ref_id) : undefined;
-  const readingBundle = open?.category === "reading" ? MOCK_READING_BUNDLES.find((b) => b.id === open.ref_id) : undefined;
-  const remedialSet = open?.category === "remedial" ? MOCK_REMEDIAL_SETS.find((s) => s.id === open.ref_id) : undefined;
+  const lessonBundle = open?.category === "lessons" ? MOCK_LESSON_BUNDLES.find((b) => b.topic.topic_id === open.topic_id) : undefined;
+  const readingBundle = open?.category === "reading" ? MOCK_READING_BUNDLES.find((b) => b.topic.topic_id === open.topic_id) : undefined;
+  const remedialSet = open?.category === "remedial" ? MOCK_REMEDIAL_SETS.find((s) => s.id === open.remedial_set_id) : undefined;
 
   if (open && lessonBundle) {
     return (
@@ -65,7 +65,7 @@ export function AprenderPage({ onExplainToFeyn }: AprenderPageProps) {
 
   return (
     <>
-      {focusCard && <DailyFocusBanner focus={MOCK_DAILY_FOCUS} card={focusCard} onStart={(c) => setOpenId(c.id)} />}
+      {focus && focusCard && <DailyFocusBanner focus={focus} card={focusCard} onStart={(c) => setOpenId(c.id)} />}
 
       <div className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Tu ruta de estudio</h2>
@@ -78,7 +78,7 @@ export function AprenderPage({ onExplainToFeyn }: AprenderPageProps) {
             key={card.id}
             card={card}
             onOpen={(c) => setOpenId(c.id)}
-            onExplainToFeyn={(c) => onExplainToFeyn(c.topic)}
+            onExplainToFeyn={(c) => onExplainToFeyn({ classroom_id: c.classroom_id, topic_id: c.topic_id, title: c.topic_title })}
           />
         ))}
       </div>

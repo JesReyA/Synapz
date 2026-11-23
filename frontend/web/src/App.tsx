@@ -6,7 +6,7 @@ import { StudentHome } from "./pages/StudentHome.tsx";
 import { MisClasesPage } from "./pages/MisClasesPage.tsx";
 import { AprenderPage } from "./pages/AprenderPage.tsx";
 import { RetosPage } from "./pages/RetosPage.tsx";
-import { PlaceholderPage } from "./pages/PlaceholderPage.tsx";
+import { ProgresoPage } from "./pages/ProgresoPage.tsx";
 import type { FeynTopicContext } from "./types/classes.ts";
 
 type View = "inicio" | "clases" | "aprender" | "retos" | "progreso";
@@ -66,7 +66,7 @@ export default function App() {
             {view === "clases" && <MisClasesPage onExplainToFeyn={explainToFeyn} />}
             {view === "retos" && <RetosPage />}
             {view === "aprender" && <AprenderPage onExplainToFeyn={explainToFeyn} />}
-            {view === "progreso" && <PlaceholderPage title="Progreso" />}
+            {view === "progreso" && <ProgresoPage dark={dark} onReinforce={() => setView("aprender")} />}
           </div>
         </main>
         <FeynChatFab open={feynOpen} onOpenChange={setFeynOpen} topic={feynTopic} />

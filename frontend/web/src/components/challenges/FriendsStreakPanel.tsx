@@ -7,9 +7,11 @@ interface FriendsStreakPanelProps {
   streak: StreakInfo;
   friends: FriendWeekly[];
   inviteCode: string;
+  /** Fecha de hoy (YYYY-MM-DD) para marcar el día actual de la semana. */
+  today: string;
 }
 
-export function FriendsStreakPanel({ streak, friends, inviteCode }: FriendsStreakPanelProps) {
+export function FriendsStreakPanel({ streak, friends, inviteCode, today }: FriendsStreakPanelProps) {
   const [copied, setCopied] = useState(false);
   const timer = useRef<number | null>(null);
 
@@ -32,7 +34,7 @@ export function FriendsStreakPanel({ streak, friends, inviteCode }: FriendsStrea
   }
 
   const ranked = [...friends].sort((a, b) => b.weekly_points - a.weekly_points);
-  const top = ranked[0]?.weekly_points ?? 1;
+  const top = Math.max(1, ranked[0]?.weekly_points ?? 1);
 
   return (
     <aside
@@ -42,27 +44,31 @@ export function FriendsStreakPanel({ streak, friends, inviteCode }: FriendsStrea
       <div className="flex flex-col items-center gap-3 rounded-2xl bg-orange-100 p-5 text-center dark:bg-amber-900/40">
         <Flame className="size-12 fill-amber-400 text-orange-500 dark:text-amber-400" strokeWidth={1.5} aria-hidden="true" />
         <div>
-          <p className="text-5xl leading-none font-bold text-slate-900 tabular-nums dark:text-white">{streak.current}</p>
+          <p className="text-5xl leading-none font-bold text-slate-900 tabular-nums dark:text-white">{streak.current_days}</p>
           <p className="mt-1 text-sm font-semibold text-slate-700 dark:text-amber-100">días de racha</p>
         </div>
         <ul className="flex gap-1.5" aria-label="Actividad de la semana">
-          {streak.week.map((d, i) => (
-            <li key={i} className="flex flex-col items-center gap-1">
+          {streak.week.map((d) => {
+            const label = new Date(`${d.date}T00:00:00`).toLocaleDateString("es-MX", { weekday: "narrow" }).toUpperCase();
+            const isToday = d.date === today;
+            return (
+            <li key={d.date} className="flex flex-col items-center gap-1">
               <span
-                aria-label={`${d.label}: ${d.active ? "activo" : "sin actividad"}${d.today ? " (hoy)" : ""}`}
+                aria-label={`${label}: ${d.active ? "activo" : "sin actividad"}${isToday ? " (hoy)" : ""}`}
                 className={`grid size-7 place-items-center rounded-full ${
                   d.active
                     ? "bg-amber-400 text-slate-900"
                     : "bg-white/70 text-slate-400 dark:bg-white/10 dark:text-slate-500"
-                } ${d.today ? "ring-2 ring-orange-500 dark:ring-amber-300" : ""}`}
+                } ${isToday ? "ring-2 ring-orange-500 dark:ring-amber-300" : ""}`}
               >
                 {d.active ? <Check className="size-3.5" strokeWidth={3} /> : null}
               </span>
-              <span className="text-[10px] font-medium text-slate-600 dark:text-amber-100/80">{d.label}</span>
+              <span className="text-[10px] font-medium text-slate-600 dark:text-amber-100/80">{label}</span>
             </li>
-          ))}
+            );
+          })}
         </ul>
-        <p className="text-xs text-slate-600 dark:text-amber-100/80">Tu mejor racha: {streak.best} días</p>
+        <p className="text-xs text-slate-600 dark:text-amber-100/80">Tu mejor racha: {streak.best_days} días</p>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -94,7 +100,7 @@ export function FriendsStreakPanel({ streak, friends, inviteCode }: FriendsStrea
         <ol className="flex flex-col gap-2">
           {ranked.map((f, i) => (
             <li
-              key={f.id}
+              key={f.student_id}
               aria-current={f.is_me ? "true" : undefined}
               className={`flex flex-col gap-1.5 rounded-xl px-3 py-2 ${
                 f.is_me ? "bg-amber-50 ring-1 ring-amber-300 dark:bg-amber-400/10 dark:ring-amber-400/40" : ""
@@ -102,7 +108,7 @@ export function FriendsStreakPanel({ streak, friends, inviteCode }: FriendsStrea
             >
               <div className="flex items-center gap-2 text-sm">
                 <span className="w-4 text-xs font-bold text-slate-500 tabular-nums dark:text-slate-400">{i + 1}</span>
-                <span className="min-w-0 flex-1 truncate font-medium text-slate-900 dark:text-white">{f.name}</span>
+                <span className="min-w-0 flex-1 truncate font-medium text-slate-900 dark:text-white">{f.name}{f.is_me ? " (tú)" : ""}</span>
                 <span className="font-semibold text-slate-700 tabular-nums dark:text-slate-200">
                   {f.weekly_points.toLocaleString("es-MX")}
                 </span>

@@ -1,6 +1,6 @@
 // Tipos de la sección Retos.
-// Los tipos de §2.6 y §2.7 reflejan API_CONTRACT.md campo por campo.
-// Los tipos "Local*" y los de ranking, racha y sudoku son solo del cliente (datos mock).
+// Los tipos de §2.6, §2.7, §2.11 y §2.12 reflejan API_CONTRACT.md campo por campo.
+// Los tipos "Local*" (claves de respuesta del mock) y los de sudoku son solo del cliente.
 
 /* ---------- Contrato: juego rápido (§2.7) ---------- */
 
@@ -48,14 +48,20 @@ export interface QuickGameSummary {
   answers: SubmitQuickGameRequest["answers"];
 }
 
-/** Fila del ranking del aula (derivada de `math_game_scores`). */
+/* ---------- Contrato: ranking grupal (§2.11) ---------- */
+
 export interface LeaderboardEntry {
   student_id: string;
-  name: string;
-  points: number;
+  name: string; // abreviado, por ejemplo "Valeria M."
+  points: number; // `math_game_scores.points` + `classroom_members.bonus_points`
   is_me: boolean;
 }
 
+export interface LeaderboardResponse {
+  classroom_id: string;
+  generated_at: string;
+  entries: LeaderboardEntry[]; // ordenadas por `points` descendente
+}
 /* ---------- Contrato: cálculo mental (§2.6) ---------- */
 
 export type MathOperation = "addition"; // ampliable: "subtraction" | "multiplication" | "division"
@@ -124,23 +130,30 @@ export interface SudokuPuzzle extends SudokuGeometry {
   solution: number[];
 }
 
-/* ---------- Rachas y amigos (solo cliente) ---------- */
+/* ---------- Contrato: rachas y amigos (§2.12) ---------- */
 
-export interface StreakDay {
-  label: string;
+export interface StreakWeekDay {
+  date: string; // YYYY-MM-DD
   active: boolean;
-  today: boolean;
 }
 
 export interface StreakInfo {
-  current: number;
-  best: number;
-  week: StreakDay[];
+  current_days: number;
+  best_days: number;
+  week: StreakWeekDay[]; // 7 días, de lunes a domingo de la semana actual
 }
 
 export interface FriendWeekly {
-  id: string;
+  student_id: string;
   name: string;
   weekly_points: number;
   is_me: boolean;
+}
+
+export interface StreakFriendsResponse {
+  classroom_id: string;
+  generated_at: string;
+  streak: StreakInfo;
+  invite_code: string; // `classrooms.invite_code`
+  friends: FriendWeekly[]; // ordenados por `weekly_points` descendente
 }

@@ -1,9 +1,9 @@
 import type {
-  FriendWeekly,
   LeaderboardEntry,
+  LeaderboardResponse,
   LocalQuickGame,
   QuickGameSummary,
-  StreakInfo,
+  StreakFriendsResponse,
   SubmitQuickGameResponse,
 } from "../types/challenges.ts";
 import { buildQuickGame } from "../lib/quickGame.ts";
@@ -11,6 +11,7 @@ import { randInt } from "../lib/random.ts";
 
 /**
  * Servicio mock de Retos. Cada función mantiene la firma que tendrá la versión real:
+ *  - fetchLeaderboard     → GET  /api/math/leaderboard (§2.11)
  *  - fetchQuickGame       → GET  /api/math/quick-game
  *  - submitQuickGame      → POST /api/math/quick-game/submit
  *  - subscribeLeaderboard → Supabase Realtime sobre `math_game_scores`
@@ -24,7 +25,7 @@ export const MY_STUDENT_ID = "me";
 const scores = new Map<string, LeaderboardEntry>([
   ["s1", { student_id: "s1", name: "Valeria M.", points: 1480, is_me: false }],
   ["s2", { student_id: "s2", name: "Diego R.", points: 1320, is_me: false }],
-  [MY_STUDENT_ID, { student_id: MY_STUDENT_ID, name: "Alex (tú)", points: 940, is_me: true }],
+  [MY_STUDENT_ID, { student_id: MY_STUDENT_ID, name: "Alex R.", points: 940, is_me: true }],
   ["s3", { student_id: "s3", name: "Camila T.", points: 870, is_me: false }],
   ["s4", { student_id: "s4", name: "Mateo L.", points: 610, is_me: false }],
   ["s5", { student_id: "s5", name: "Sofía P.", points: 450, is_me: false }],
@@ -64,12 +65,15 @@ function stopRivals(): void {
 export function subscribeLeaderboard(classroomId: string, onChange: Listener): () => void {
   void classroomId; // el mock es global; Realtime filtrará por `classroom_id`
   listeners.add(onChange);
-  onChange(snapshotLeaderboard());
   startRivals();
   return () => {
     listeners.delete(onChange);
     if (listeners.size === 0) stopRivals();
   };
+}
+
+export async function fetchLeaderboard(classroomId: string): Promise<LeaderboardResponse> {
+  return { classroom_id: classroomId, generated_at: new Date().toISOString(), entries: snapshotLeaderboard() };
 }
 
 export async function fetchQuickGame(classroomId: string): Promise<LocalQuickGame> {
@@ -85,27 +89,30 @@ export async function submitQuickGame(summary: QuickGameSummary): Promise<Submit
   return { points: summary.points, correct: summary.correct, total: summary.total, rank };
 }
 
-/* ---------- Rachas y amigos ---------- */
+/* ---------- Rachas y amigos (§2.12) ---------- */
 
-export const MOCK_INVITE_CODE = "SYN-4K7P2Q";
-
-export const MOCK_STREAK: StreakInfo = {
-  current: 5,
-  best: 12,
-  week: [
-    { label: "L", active: true, today: false },
-    { label: "M", active: true, today: false },
-    { label: "M", active: true, today: false },
-    { label: "J", active: true, today: false },
-    { label: "V", active: true, today: true },
-    { label: "S", active: false, today: false },
-    { label: "D", active: false, today: false },
+/** Semana del lunes 5 al domingo 11 de mayo de 2025, igual que el mock de Progreso. */
+export const MOCK_STREAK_FRIENDS: StreakFriendsResponse = {
+  classroom_id: MOCK_CLASSROOM_ID,
+  generated_at: "2025-05-11T12:00:00Z",
+  invite_code: "K7P2Q9",
+  streak: {
+    current_days: 5,
+    best_days: 12,
+    week: [
+      { date: "2025-05-05", active: false },
+      { date: "2025-05-06", active: false },
+      { date: "2025-05-07", active: true },
+      { date: "2025-05-08", active: true },
+      { date: "2025-05-09", active: true },
+      { date: "2025-05-10", active: true },
+      { date: "2025-05-11", active: true },
+    ],
+  },
+  friends: [
+    { student_id: "s1", name: "Valeria M.", weekly_points: 1240, is_me: false },
+    { student_id: MY_STUDENT_ID, name: "Alex R.", weekly_points: 980, is_me: true },
+    { student_id: "s2", name: "Diego R.", weekly_points: 910, is_me: false },
+    { student_id: "s3", name: "Camila T.", weekly_points: 640, is_me: false },
   ],
 };
-
-export const MOCK_FRIENDS: FriendWeekly[] = [
-  { id: "f1", name: "Valeria M.", weekly_points: 1240, is_me: false },
-  { id: "f2", name: "Alex (tú)", weekly_points: 980, is_me: true },
-  { id: "f3", name: "Diego R.", weekly_points: 910, is_me: false },
-  { id: "f4", name: "Camila T.", weekly_points: 640, is_me: false },
-];
