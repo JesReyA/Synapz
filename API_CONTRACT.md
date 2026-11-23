@@ -188,6 +188,19 @@ Un registro por día en que el alumno completó alguna actividad. La racha se ca
 | `day`        | date    |                        |
 
 
+### `bonus_point_events`
+
+Auditoría de los puntos extra que otorga el profesor (requisito A5). La suma vigente está en `classroom_members.bonus_points`.
+
+| Columna                      | Tipo        | Notas                          |
+| ---------------------------- | ----------- | ------------------------------ |
+| `id`                         | uuid PK     |                                |
+| `classroom_id`, `student_id` | uuid FK     |                                |
+| `teacher_id`                 | uuid FK     | Quien otorga los puntos        |
+| `points`                     | int         | Entre 1 y 50                   |
+| `reason`                     | text        | Máximo 140 caracteres          |
+| `created_at`                 | timestamptz |                                |
+
 ### `remedial_sets`
 
 Series de nivelación sin límite de tiempo. El backend las genera por alumno a partir de los temas previos con rezago.
@@ -604,6 +617,12 @@ export interface InflectionPoint {
   delta: number; // avg_after - avg_before
   topic_id?: string;
 }
+export interface GroupReference {
+  framework: "PISA"; // referencia aproximada, no es una evaluación oficial
+  group_level: ReferenceLevel; // §2.10, calculado con `overall_avg`
+  target_level: number; // nivel meta del ciclo, por defecto 4
+  target_min_score: number; // puntaje mínimo de ese nivel (60 para el nivel 4)
+}
 export interface ClassroomReport {
   classroom_id: string;
   generated_at: string;
@@ -620,6 +639,7 @@ export interface ClassroomReport {
   recommendations: { topic_id: string; text: string }[];
   inflection_points: InflectionPoint[];
   integrity_flags: number; // diagnósticos con eventos anti-trampa
+  reference: GroupReference;
 }
 ```
 
@@ -640,6 +660,12 @@ class InflectionPoint(BaseModel):
     delta: float
     topic_id: UUID | None = None
 
+class GroupReference(BaseModel):
+    framework: Literal["PISA"]
+    group_level: ReferenceLevel
+    target_level: int = 4
+    target_min_score: float = 60
+
 class ClassroomReport(BaseModel):
     classroom_id: UUID
     generated_at: datetime
@@ -652,7 +678,10 @@ class ClassroomReport(BaseModel):
     recommendations: list[Recommendation]
     inflection_points: list[InflectionPoint]
     integrity_flags: int
+    reference: GroupReference
 ```
+
+`reference.group_level` usa la misma regla de §2.10 aplicada a `overall_avg`. `target_min_score` es el límite inferior del `target_level` según esa regla.
 
 Para registrar estrategias (punto de inflexión): `POST /api/reports/classroom/{id}/strategies` con `{ description: string; applied_at: string; topic_id?: string }` → `{ strategy_id: string }`. Requiere una tabla `strategies` (`id`, `classroom_id`, `topic_id`, `description`, `applied_at`).
 
@@ -839,7 +868,7 @@ Cómo se calcula cada campo:
 - `recommendations`: se generan para el tema con menor `score` y para el de mayor `score`. Gemini solo redacta la acción sugerida a partir del tema, sus prerrequisitos y los gustos del alumno. No añade contenido del curso (Regla de Oro).
 
 
-### 2.11 `GET /api/math/leaderboard` (rol: `student`, miembro del aula)
+### 2.11 `GET /api/math/leaderboard` (rol: `student` miembro del aula, o `teacher` dueño)
 
 Estado inicial del ranking grupal. Las actualizaciones posteriores llegan por Supabase Realtime (§2.7).
 Query: `classroom_id` (uuid).
@@ -872,6 +901,7 @@ class LeaderboardResponse(BaseModel):
 ```
 
 - El nombre se abrevia (nombre y inicial del apellido) porque los alumnos son menores de edad.
+- Para el `teacher` dueño del aula, `is_me` es siempre `false`.
 - Con un `INSERT` en `math_game_scores` del aula, el cliente suma `points` a la entrada del `student_id`. Si ese alumno no está en la lista, o cambia `classroom_members.bonus_points`, vuelve a pedir este endpoint.
 
 ### 2.12 `GET /api/social/streak-friends` (rol: `student`)
@@ -1076,15 +1106,90 @@ class SubmitRemedialResultResponse(BaseModel):
 - `accepted_answers` viaja al cliente y la corrección es local. Si se quiere ocultar, se mueve a un endpoint de verificación en Fase 2 (igual que en §2.3).
 - Errores: `NOT_FOUND`, `FORBIDDEN` si la serie no es del alumno, y `NO_TEACHER_MATERIAL` (422) si el tema previo no tiene material.
 - El `POST` actualiza `best_first_try_pct` (conserva el mayor) e incrementa `attempts`.
+### 2.15 `GET /api/teacher/overview` (rol: `teacher`)
+
+Resumen de todas las aulas del docente para el Panel Docente. El detalle de cada aula está en §2.8.
+
+```ts
+export interface TeacherClassroomSummary {
+  id: string;
+  name: string;
+  subject: string;
+  subject_area: SubjectArea; // §2.10
+  grade_group: string;
+  invite_code: string; // 6 caracteres
+  student_count: number;
+  overall_avg: number | null; // null si aún no hay datos
+  at_risk_count: number;
+  topics_pending_review: number; // temas con `status = review`
+}
+export interface TeacherOverviewResponse {
+  teacher_id: string;
+  generated_at: string;
+  classrooms: TeacherClassroomSummary[];
+}
+```
+
+```python
+class TeacherClassroomSummary(BaseModel):
+    id: UUID
+    name: str
+    subject: str
+    subject_area: SubjectArea
+    grade_group: str
+    invite_code: str = Field(min_length=6, max_length=6)
+    student_count: int = Field(ge=0)
+    overall_avg: float | None = Field(default=None, ge=0, le=100)
+    at_risk_count: int = Field(ge=0)
+    topics_pending_review: int = Field(ge=0)
+
+class TeacherOverviewResponse(BaseModel):
+    teacher_id: UUID
+    generated_at: datetime
+    classrooms: list[TeacherClassroomSummary]
+```
+
+### 2.16 `POST /api/classrooms/{id}/bonus-points` (rol: `teacher` dueño del aula)
+
+Otorga puntos extra a un alumno en el ranking del juego rápido (requisito A5).
+
+```ts
+export interface GrantBonusPointsRequest {
+  student_id: string;
+  points: number; // entero entre 1 y 50
+  reason: string; // máximo 140 caracteres
+}
+export interface GrantBonusPointsResponse {
+  student_id: string;
+  bonus_points: number; // total vigente de `classroom_members.bonus_points`
+  total_points: number; // juego rápido + puntos extra, el valor del ranking
+}
+```
+
+```python
+class GrantBonusPointsRequest(BaseModel):
+    student_id: UUID
+    points: int = Field(ge=1, le=50)
+    reason: str = Field(min_length=1, max_length=140)
+
+class GrantBonusPointsResponse(BaseModel):
+    student_id: UUID
+    bonus_points: int
+    total_points: int
+```
+
+Inserta en `bonus_point_events` y suma a `classroom_members.bonus_points`. Todos los clientes del aula ven el cambio al volver a pedir §2.11 (Realtime sobre `classroom_members`). Errores: `FORBIDDEN` si el aula no es del docente, `NOT_FOUND` si el alumno no es miembro y `VALIDATION_ERROR`.
+
 ---
 
 ## 3. Acceso directo desde el frontend a Supabase (sin pasar por FastAPI)
 
 | Operación                      | Tabla                           | Notas                                                                 |
 | ------------------------------ | ------------------------------- | --------------------------------------------------------------------- |
-| Registro e inicio de sesión    | `auth`                          |                                                                       |
+| Registro e inicio de sesión    | `auth`                          | El rol (`teacher` \| `student`) se lee de `profiles.role` tras iniciar sesión |
 | Leer/editar perfil e intereses | `profiles`                      | RLS: solo el propio usuario                                           |
-| Crear aula y regenerar código  | `classrooms`                    | RLS: solo `teacher` dueño                                             |
+| Crear aula                     | `classrooms`                    | RLS: solo `teacher` dueño. Un trigger SQL genera `invite_code` único de 6 caracteres |
+| Regenerar código               | RPC `regenerate_invite_code(classroom_id uuid)` | Función SQL `security definer`; el código anterior deja de funcionar |
 | Unirse con código              | RPC `join_classroom(code text)` | Función SQL `security definer`                                        |
 | CRUD de temas y calendario     | `syllabus_topics`               | RLS: solo `teacher` dueño. `material_text` solo lo escribe el backend |
 | Ranking en vivo                | `math_game_scores`              | Suscripción Realtime `postgres_changes` con filtro por aula. Estado inicial: §2.11 |
@@ -1098,3 +1203,4 @@ El anti-trampa se envía con la entrega del diagnóstico. Endpoint pendiente de 
 3. Límite de uso (rate limit) por usuario para los endpoints con Gemini.
 4. Migraciones para `classrooms.subject_area`, `reading_sessions.comprehension_score`, `topic_score_events` y `activity_days` (§1), necesarias para `GET /api/progress/me` (§2.10).
 5. Migración para `remedial_sets` (§1), necesaria para `GET /api/learning/home` y los endpoints de nivelación (§2.13 y §2.14).
+6. Migración para `bonus_point_events` (§1), necesaria para `POST /api/classrooms/{id}/bonus-points` (§2.16).

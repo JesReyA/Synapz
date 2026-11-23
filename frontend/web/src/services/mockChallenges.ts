@@ -8,12 +8,14 @@ import type {
 } from "../types/challenges.ts";
 import { buildQuickGame } from "../lib/quickGame.ts";
 import { randInt } from "../lib/random.ts";
+import type { GrantBonusPointsRequest, GrantBonusPointsResponse } from "../types/teacher.ts";
 
 /**
  * Servicio mock de Retos. Cada función mantiene la firma que tendrá la versión real:
  *  - fetchLeaderboard     → GET  /api/math/leaderboard (§2.11)
  *  - fetchQuickGame       → GET  /api/math/quick-game
  *  - submitQuickGame      → POST /api/math/quick-game/submit
+ *  - grantBonusPoints     → POST /api/classrooms/{id}/bonus-points (§2.16, desde el panel docente)
  *  - subscribeLeaderboard → Supabase Realtime sobre `math_game_scores`
  *    (postgres_changes, filtro `classroom_id=eq.<id>`).
  * Al conectar Supabase solo se reemplaza este archivo.
@@ -74,6 +76,23 @@ export function subscribeLeaderboard(classroomId: string, onChange: Listener): (
 
 export async function fetchLeaderboard(classroomId: string): Promise<LeaderboardResponse> {
   return { classroom_id: classroomId, generated_at: new Date().toISOString(), entries: snapshotLeaderboard() };
+}
+
+const bonusByStudent = new Map<string, number>();
+
+/** Otorga puntos extra. El ranking se actualiza para todos los suscritos. */
+export async function grantBonusPoints(
+  classroomId: string,
+  request: GrantBonusPointsRequest,
+): Promise<GrantBonusPointsResponse> {
+  void classroomId;
+  const entry = scores.get(request.student_id);
+  if (!entry) throw new Error("NOT_FOUND");
+  scores.set(entry.student_id, { ...entry, points: entry.points + request.points });
+  const bonus = (bonusByStudent.get(entry.student_id) ?? 0) + request.points;
+  bonusByStudent.set(entry.student_id, bonus);
+  emit();
+  return { student_id: entry.student_id, bonus_points: bonus, total_points: entry.points + request.points };
 }
 
 export async function fetchQuickGame(classroomId: string): Promise<LocalQuickGame> {
