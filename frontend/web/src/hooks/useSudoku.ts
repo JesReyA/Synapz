@@ -1,17 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { findConflicts, generatePuzzle } from "../lib/sudoku.ts";
-import type { SudokuDifficulty, SudokuPuzzle, SudokuSize } from "../types/challenges.ts";
+import {
+  applyTap,
+  completedDigits as computeCompletedDigits,
+  findConflicts,
+  generatePuzzle,
+} from "../lib/sudoku.ts";
+import type { SudokuDifficulty, SudokuDigit, SudokuPuzzle } from "../types/challenges.ts";
 
 export function useSudoku() {
-  const [size, setSize] = useState<SudokuSize>(6);
   const [difficulty, setDifficulty] = useState<SudokuDifficulty>("facil");
-  const [puzzle, setPuzzle] = useState<SudokuPuzzle>(() => generatePuzzle(6, "facil"));
-  const [values, setValues] = useState<number[]>(puzzle.cells);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [puzzle, setPuzzle] = useState<SudokuPuzzle>(() => generatePuzzle("facil"));
+  const [values, setValues] = useState<readonly number[]>(puzzle.cells);
+  const [activeDigit, setActiveDigit] = useState<SudokuDigit | null>(null);
   const [elapsed, setElapsed] = useState(0);
 
-  const conflicts = useMemo(() => findConflicts(values, puzzle), [values, puzzle]);
+  const conflicts = useMemo(() => findConflicts(values), [values]);
   const solved = values.every((v) => v !== 0) && conflicts.size === 0;
+  const completedDigits = useMemo(
+    () => computeCompletedDigits(values, puzzle.solution),
+    [values, puzzle.solution],
+  );
 
   useEffect(() => {
     if (solved) return;
@@ -19,45 +27,37 @@ export function useSudoku() {
     return () => window.clearInterval(id);
   }, [solved, puzzle.id]);
 
-  function load(nextSize: SudokuSize, nextDifficulty: SudokuDifficulty) {
-    const next = generatePuzzle(nextSize, nextDifficulty);
-    setSize(nextSize);
+  function load(nextDifficulty: SudokuDifficulty) {
+    const next = generatePuzzle(nextDifficulty);
     setDifficulty(nextDifficulty);
     setPuzzle(next);
     setValues(next.cells);
-    setSelected(null);
+    setActiveDigit(null);
     setElapsed(0);
   }
 
-  function setCell(value: number) {
-    if (selected === null || solved || puzzle.cells[selected] !== 0) return;
-    if (value < 0 || value > puzzle.size) return;
-    setValues((prev) => prev.map((v, i) => (i === selected ? value : v)));
+  function toggleDigit(digit: SudokuDigit) {
+    setActiveDigit((current) => (current === digit ? null : digit));
   }
 
-  function moveSelection(dRow: number, dCol: number) {
-    const n = puzzle.size;
-    const from = selected ?? 0;
-    const row = Math.min(n - 1, Math.max(0, Math.floor(from / n) + dRow));
-    const col = Math.min(n - 1, Math.max(0, (from % n) + dCol));
-    setSelected(row * n + col);
+  function tapCell(index: number) {
+    if (solved) return;
+    setValues((prev) => applyTap(prev, puzzle.cells, index, activeDigit));
   }
 
   return {
-    size,
     difficulty,
     puzzle,
     values,
-    selected,
+    activeDigit,
     elapsed,
     conflicts,
     solved,
+    completedDigits,
     filled: values.filter((v) => v !== 0).length,
-    changeSize: (s: SudokuSize) => load(s, difficulty),
-    changeDifficulty: (d: SudokuDifficulty) => load(size, d),
-    restart: () => load(size, difficulty),
-    select: setSelected,
-    setCell,
-    moveSelection,
+    changeDifficulty: (d: SudokuDifficulty) => load(d),
+    newGame: () => load(difficulty),
+    toggleDigit,
+    tapCell,
   };
 }

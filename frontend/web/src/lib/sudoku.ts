@@ -1,7 +1,9 @@
-import type { SudokuDifficulty, SudokuGeometry, SudokuPuzzle, SudokuSize } from "../types/challenges.ts";
+import type { SudokuDifficulty, SudokuDigit, SudokuPuzzle } from "../types/challenges.ts";
 import { newId, shuffle } from "./random.ts";
 
-export const SIZES: readonly SudokuSize[] = [6, 9];
+/** Lado del tablero y de cada bloque. */
+export const SIZE = 9;
+export const BOX = 3;
 
 export const DIFFICULTIES: readonly { id: SudokuDifficulty; label: string }[] = [
   { id: "facil", label: "Fácil" },
@@ -10,14 +12,7 @@ export const DIFFICULTIES: readonly { id: SudokuDifficulty; label: string }[] = 
 ];
 
 /** Pistas que quedan visibles. */
-const CLUES: Record<SudokuSize, Record<SudokuDifficulty, number>> = {
-  6: { facil: 24, medio: 19, dificil: 15 },
-  9: { facil: 42, medio: 34, dificil: 28 },
-};
-
-export function geometryFor(size: SudokuSize): SudokuGeometry {
-  return size === 6 ? { size, boxRows: 2, boxCols: 3 } : { size, boxRows: 3, boxCols: 3 };
-}
+const CLUES: Record<SudokuDifficulty, number> = { facil: 42, medio: 34, dificil: 28 };
 
 function range(n: number): number[] {
   return Array.from({ length: n }, (_, i) => i);
@@ -27,8 +22,8 @@ function groupedPermutation(groups: number, perGroup: number): number[] {
   return shuffle(range(groups)).flatMap((g) => shuffle(range(perGroup)).map((i) => g * perGroup + i));
 }
 
-function boxIndex(g: SudokuGeometry, row: number, col: number): number {
-  return Math.floor(row / g.boxRows) * (g.size / g.boxCols) + Math.floor(col / g.boxCols);
+function boxIndex(row: number, col: number): number {
+  return Math.floor(row / BOX) * BOX + Math.floor(col / BOX);
 }
 
 function popcount(mask: number): number {
@@ -37,17 +32,16 @@ function popcount(mask: number): number {
   return n;
 }
 
-function buildSolution(g: SudokuGeometry): number[] {
-  const { size, boxRows, boxCols } = g;
-  const rows = groupedPermutation(size / boxRows, boxRows);
-  const cols = groupedPermutation(size / boxCols, boxCols);
-  const digits = shuffle(range(size).map((d) => d + 1));
+function buildSolution(): number[] {
+  const rows = groupedPermutation(BOX, BOX);
+  const cols = groupedPermutation(BOX, BOX);
+  const digits = shuffle(range(SIZE).map((d) => d + 1));
   const out: number[] = [];
-  for (let r = 0; r < size; r++) {
-    for (let c = 0; c < size; c++) {
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
       const rr = rows[r] as number;
       const cc = cols[c] as number;
-      const base = (boxCols * (rr % boxRows) + Math.floor(rr / boxRows) + cc) % size;
+      const base = (BOX * (rr % BOX) + Math.floor(rr / BOX) + cc) % SIZE;
       out.push(digits[base] as number);
     }
   }
@@ -55,8 +49,8 @@ function buildSolution(g: SudokuGeometry): number[] {
 }
 
 /** Cuenta soluciones (hasta `limit`) con backtracking y la celda con menos candidatos primero. */
-function countSolutions(cells: readonly number[], g: SudokuGeometry, limit = 2): number {
-  const n = g.size;
+function countSolutions(cells: readonly number[], limit = 2): number {
+  const n = SIZE;
   const full = (1 << n) - 1;
   const grid = [...cells];
   const rows = new Array<number>(n).fill(0);
@@ -69,7 +63,7 @@ function countSolutions(cells: readonly number[], g: SudokuGeometry, limit = 2):
     const bit = 1 << (v - 1);
     rows[r] = (rows[r] as number) | bit;
     cols[c] = (cols[c] as number) | bit;
-    const b = boxIndex(g, r, c);
+    const b = boxIndex(r, c);
     boxes[b] = (boxes[b] as number) | bit;
   });
 
@@ -83,7 +77,7 @@ function countSolutions(cells: readonly number[], g: SudokuGeometry, limit = 2):
       if (grid[i] !== 0) continue;
       const r = Math.floor(i / n);
       const c = i % n;
-      const used = (rows[r] as number) | (cols[c] as number) | (boxes[boxIndex(g, r, c)] as number);
+      const used = (rows[r] as number) | (cols[c] as number) | (boxes[boxIndex(r, c)] as number);
       const avail = ~used & full;
       const k = popcount(avail);
       if (k === 0) return;
@@ -99,7 +93,7 @@ function countSolutions(cells: readonly number[], g: SudokuGeometry, limit = 2):
     }
     const r = Math.floor(bestIdx / n);
     const c = bestIdx % n;
-    const b = boxIndex(g, r, c);
+    const b = boxIndex(r, c);
     for (let d = 0; d < n; d++) {
       const bit = 1 << d;
       if ((bestAvail & bit) === 0) continue;
@@ -120,31 +114,30 @@ function countSolutions(cells: readonly number[], g: SudokuGeometry, limit = 2):
 }
 
 /** Genera un sudoku de solución única. Solo se quitan celdas que mantienen esa unicidad. */
-export function generatePuzzle(size: SudokuSize, difficulty: SudokuDifficulty): SudokuPuzzle {
-  const g = geometryFor(size);
-  const solution = buildSolution(g);
+export function generatePuzzle(difficulty: SudokuDifficulty): SudokuPuzzle {
+  const solution = buildSolution();
   const cells = [...solution];
-  const target = CLUES[size][difficulty];
+  const target = CLUES[difficulty];
   let clues = cells.length;
   for (const i of shuffle(range(cells.length))) {
     if (clues <= target) break;
     const saved = cells[i] as number;
     cells[i] = 0;
-    if (countSolutions(cells, g) === 1) clues--;
+    if (countSolutions(cells) === 1) clues--;
     else cells[i] = saved;
   }
-  return { ...g, id: newId(), difficulty, cells, solution };
+  return { id: newId(), difficulty, cells, solution };
 }
 
 /** Índices de celdas que repiten un número en su fila, columna o caja. */
-export function findConflicts(values: readonly number[], g: SudokuGeometry): Set<number> {
-  const n = g.size;
+export function findConflicts(values: readonly number[]): Set<number> {
+  const n = SIZE;
   const groups = new Map<string, number[]>();
   values.forEach((v, i) => {
     if (v === 0) return;
     const r = Math.floor(i / n);
     const c = i % n;
-    for (const key of [`r${r}-${v}`, `c${c}-${v}`, `b${boxIndex(g, r, c)}-${v}`]) {
+    for (const key of [`r${r}-${v}`, `c${c}-${v}`, `b${boxIndex(r, c)}-${v}`]) {
       const list = groups.get(key);
       if (list) list.push(i);
       else groups.set(key, [i]);
@@ -155,6 +148,45 @@ export function findConflicts(values: readonly number[], g: SudokuGeometry): Set
     if (list.length > 1) list.forEach((i) => conflicts.add(i));
   }
   return conflicts;
+}
+
+/**
+ * Valores del tablero tras tocar la casilla `index` con el número `active`.
+ * Devuelve `values` (misma referencia) si el toque no cambia nada: sin número activo,
+ * índice fuera de rango o casilla que es pista. Nunca muta `values`.
+ */
+export function applyTap(
+  values: readonly number[],
+  givens: readonly number[],
+  index: number,
+  active: SudokuDigit | null,
+): readonly number[] {
+  if (active === null) return values;
+  if (!Number.isInteger(index) || index < 0 || index >= SIZE * SIZE) return values;
+  if (givens[index] !== 0) return values;
+  const next = [...values];
+  next[index] = values[index] === active ? 0 : active;
+  return next;
+}
+
+/**
+ * Dígitos cuyas posiciones en `solution` están todas llenas con ese dígito en `values`.
+ * Recorre el tablero una sola vez.
+ */
+export function completedDigits(
+  values: readonly number[],
+  solution: readonly number[],
+): ReadonlySet<SudokuDigit> {
+  const complete = new Array<boolean>(SIZE + 1).fill(true);
+  for (let i = 0; i < solution.length; i++) {
+    const digit = solution[i] as number;
+    if (values[i] !== digit) complete[digit] = false;
+  }
+  const out = new Set<SudokuDigit>();
+  for (let d = 1; d <= SIZE; d++) {
+    if (complete[d]) out.add(d as SudokuDigit);
+  }
+  return out;
 }
 
 export function formatTime(totalSeconds: number): string {
