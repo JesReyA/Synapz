@@ -1,9 +1,10 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { TopHeader } from "./components/TopHeader.tsx";
 import { FeynChatFab } from "./components/FeynChatFab.tsx";
 import { StudentHome } from "./pages/StudentHome.tsx";
 import { MisClasesPage } from "./pages/MisClasesPage.tsx";
+import { AprenderPage } from "./pages/AprenderPage.tsx";
 import { RetosPage } from "./pages/RetosPage.tsx";
 import { PlaceholderPage } from "./pages/PlaceholderPage.tsx";
 import type { FeynTopicContext } from "./types/classes.ts";
@@ -64,7 +65,7 @@ export default function App() {
             {view === "inicio" && <StudentHome dark={dark} />}
             {view === "clases" && <MisClasesPage onExplainToFeyn={explainToFeyn} />}
             {view === "retos" && <RetosPage />}
-            {view === "aprender" && <PlaceholderPage title="Aprender" />}
+            {view === "aprender" && <AprenderPage onExplainToFeyn={explainToFeyn} />}
             {view === "progreso" && <PlaceholderPage title="Progreso" />}
           </div>
         </main>
