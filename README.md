@@ -50,6 +50,7 @@ Hoy, el sistema educativo enfrenta tres fracturas críticas:
 - **Fluidez en cálculo mental:** Diagnóstico base que mide velocidad y exactitud (empezando por sumas y escalando operaciones) con dificultad progresiva, consejos personalizados y ejemplos cotidianos.
 - **Batallas rápidas tipo Kahoot:** Duelos contra reloj de 2 opciones sobre operaciones básicas y temas vistos en clase con **ranking grupal en tiempo real** (donde el docente puede otorgar puntos extra).
 - **Zona de agilidad y retos:** Rachas diarias entre amigos estilo _TikTok_ y **Sudoku de lógica** (`9x9` en niveles fácil, medio y difícil).
+- **Zona de juegos:** Retos se abre como una cuadrícula **Masonry** con todos los juegos, y cada uno se juega por separado: además del Sudoku, **Ajedrez** (dos jugadores en el mismo dispositivo), **Juego del 15**, **Buscaminas**, **Tangram**, **Tetris** y **Memorama**. El ranking del aula y las rachas se ven siempre a un lado.
 
 ### 5. Aprendizaje Multimodal Adaptativo
 
