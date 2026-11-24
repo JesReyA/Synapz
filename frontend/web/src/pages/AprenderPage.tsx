@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DailyFocusBanner } from "../components/learning/DailyFocusBanner.tsx";
+import { NepohualtzintzinFeatureCard } from "../components/learning/nepohualtzintzin/NepohualtzintzinFeatureCard.tsx";
 import { MultimodalLessonViewer } from "../components/learning/MultimodalLessonViewer.tsx";
 import { ReadingVoiceCoachView } from "../components/learning/ReadingVoiceCoachView.tsx";
 import { RemedialPracticeModal } from "../components/learning/RemedialPracticeModal.tsx";
@@ -13,6 +14,7 @@ import {
   mockEvaluateAudio,
 } from "../data/mockLearning.ts";
 import type { FeynTopicContext, StudyCard, StudyFilter } from "../types/learning.ts";
+import { NepohualtzintzinView } from "./NepohualtzintzinView.tsx";
 
 interface AprenderPageProps {
   onExplainToFeyn: (context: FeynTopicContext) => void;
@@ -22,6 +24,7 @@ export function AprenderPage({ onExplainToFeyn }: AprenderPageProps) {
   const [cards, setCards] = useState<StudyCard[]>(MOCK_LEARNING_HOME.cards);
   const [filter, setFilter] = useState<StudyFilter>("all");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [nepoOpen, setNepoOpen] = useState(false);
 
   const focus = MOCK_LEARNING_HOME.daily_focus;
   const open = cards.find((c) => c.id === openId) ?? null;
@@ -41,6 +44,8 @@ export function AprenderPage({ onExplainToFeyn }: AprenderPageProps) {
   const lessonBundle = open?.category === "lessons" ? MOCK_LESSON_BUNDLES.find((b) => b.topic.topic_id === open.topic_id) : undefined;
   const readingBundle = open?.category === "reading" ? MOCK_READING_BUNDLES.find((b) => b.topic.topic_id === open.topic_id) : undefined;
   const remedialSet = open?.category === "remedial" ? MOCK_REMEDIAL_SETS.find((s) => s.id === open.remedial_set_id) : undefined;
+
+  if (nepoOpen) return <NepohualtzintzinView onBack={() => setNepoOpen(false)} />;
 
   if (open && lessonBundle) {
     return (
@@ -66,6 +71,8 @@ export function AprenderPage({ onExplainToFeyn }: AprenderPageProps) {
   return (
     <>
       {focus && focusCard && <DailyFocusBanner focus={focus} card={focusCard} onStart={(c) => setOpenId(c.id)} />}
+
+      <NepohualtzintzinFeatureCard onPractice={() => setNepoOpen(true)} />
 
       <div className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Tu ruta de estudio</h2>
