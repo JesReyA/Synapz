@@ -1,10 +1,10 @@
-import Settings
+from app.core.config import settings
 from google import genai
 from google.genai import types
 from app.schemas.feyn import FeynChatResponse
 
 #Inicializa el cliente SDK de Google Gen AI pasando la API KEY desde Settings
-client = genai.Client(api_key=Settings.GEMINI_API_KEY)
+client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 #Se crea un system prompt para indicar al modelo el comportamiento que debe seguir
 FEYN_SYSTEM_PROMPT= """
@@ -18,23 +18,23 @@ Reglas:
 """
 
 #Genera la respuesta del modelo en base a datos como el prompt, el system prompt, el modelo, y configuración del mismo
-def evaluate_feyn_explanation():
+def evaluate_feyn_explanation(topic: str, material: str, explanation: str) -> FeynChatResponse:
     #Pasa el prompt al modelo
-    prompt=f"""
+    prompt = f"""
     Tema: {topic}
     Material del profesor: {material}
-    Explicación del alumno: {student_explanation}
+    Explicación del alumno: {explanation}
     """
 
     #Genera la petición con las características de la misma y la respuesta
     response = client.models.generate_content(
-        model="gemini-2.5-flash"
+        model="gemini-2.5-flash",
         contents=prompt,
         config=types.GenerateContentConfig(
             system_instruction=FEYN_SYSTEM_PROMPT,
             response_mime_type="application/json",
             response_schema=FeynChatResponse,
-            #Evita que genere alucinación y se adecúe a los contenidos del profesor 
+            #Evita que genere alucinación y así se adecúe a los contenidos del profesor
             temperature = 0.4,
         ),
     )
