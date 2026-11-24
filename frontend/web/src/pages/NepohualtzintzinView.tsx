@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { useRef, useState } from "react";
+import { ArrowLeft, Info, X } from "lucide-react";
 import { FeynNepohualtzintzinCoach } from "../components/learning/nepohualtzintzin/FeynNepohualtzintzinCoach.tsx";
 import { NepohualtzintzinBoard } from "../components/learning/nepohualtzintzin/NepohualtzintzinBoard.tsx";
 import { NepohualtzintzinGuide } from "../components/learning/nepohualtzintzin/NepohualtzintzinGuide.tsx";
-import { emptyColumns, boardValue, valueToColumns } from "../lib/nepohualtzintzin.ts";
-import type { BoardColumns } from "../types/nepohualtzintzin.ts";
+import { boardValue, emptyColumns } from "../lib/nepohualtzintzin.ts";
+import type { AbacusSetup, BoardColumns } from "../types/nepohualtzintzin.ts";
 
 interface NepohualtzintzinViewProps {
   onBack: () => void;
@@ -16,6 +16,19 @@ export function NepohualtzintzinView({ onBack }: NepohualtzintzinViewProps) {
   const [count, setCount] = useState<BoardCount>(1);
   const [boardA, setBoardA] = useState<BoardColumns>(emptyColumns);
   const [boardB, setBoardB] = useState<BoardColumns>(emptyColumns);
+  const [note, setNote] = useState<string | null>(null);
+  const boardsRef = useRef<HTMLDivElement>(null);
+
+  /** Carga un ejemplo de la guía. Si trae Tablero 2, activa el modo de 2 ábacos. */
+  function loadSetup(setup: AbacusSetup) {
+    setBoardA(setup.board1);
+    if (setup.board2) {
+      setBoardB(setup.board2);
+      setCount(2);
+    }
+    setNote(setup.note ?? null);
+    boardsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   const answerBoard = count === 2 ? boardB : boardA;
   const answerLabel = count === 2 ? "Tablero 2 (Operando B / Resultado)" : "el tablero";
@@ -62,7 +75,22 @@ export function NepohualtzintzinView({ onBack }: NepohualtzintzinViewProps) {
         </div>
       </header>
 
-      <div className={`grid grid-cols-1 gap-4 md:gap-5 ${count === 2 ? "lg:grid-cols-2" : ""}`}>
+      {note && (
+        <p role="status" className="flex items-start gap-2 rounded-2xl bg-blue-50 p-3 text-sm text-slate-700 dark:bg-blue-500/10 dark:text-slate-300">
+          <Info className="mt-0.5 size-4 shrink-0 text-blue-500 dark:text-blue-300" strokeWidth={1.75} />
+          <span className="flex-1">{note}</span>
+          <button
+            type="button"
+            onClick={() => setNote(null)}
+            aria-label="Cerrar aviso"
+            className="grid size-6 shrink-0 place-items-center rounded-full text-slate-500 hover:bg-white/60 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none dark:text-slate-400 dark:hover:bg-white/5"
+          >
+            <X className="size-3.5" strokeWidth={2} />
+          </button>
+        </p>
+      )}
+
+      <div ref={boardsRef} className={`grid scroll-mt-4 grid-cols-1 gap-4 md:gap-5 ${count === 2 ? "lg:grid-cols-2" : ""}`}>
         <NepohualtzintzinBoard
           title={count === 2 ? "Tablero 1 (Operando A)" : "Tablero 1"}
           columns={boardA}
@@ -74,7 +102,7 @@ export function NepohualtzintzinView({ onBack }: NepohualtzintzinViewProps) {
       </div>
 
       <FeynNepohualtzintzinCoach value={boardValue(answerBoard)} answerLabel={answerLabel} />
-      <NepohualtzintzinGuide onShowExample={(v) => setBoardA(valueToColumns(v) ?? emptyColumns())} />
+      <NepohualtzintzinGuide onLoadSetup={loadSetup} />
     </div>
   );
 }

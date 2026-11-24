@@ -6,6 +6,7 @@ import type {
   CoachDifficulty,
   ColumnState,
   NepohualtzintzinChallenge,
+  PowerDigits,
 } from "../types/nepohualtzintzin.ts";
 import { newId, randInt } from "./random.ts";
 
@@ -36,6 +37,17 @@ export const columnDigit = (c: ColumnState): number => c.top * TOP_VALUE + c.bot
 
 export function boardValue(columns: BoardColumns): bigint {
   return columns.reduce((acc, c) => acc * BASE + BigInt(columnDigit(c)), 0n);
+}
+
+/** Arma columnas a partir del dígito (0-19) de cada potencia de 20. */
+export function columnsFromDigits(digits: PowerDigits): BoardColumns {
+  const columns = emptyColumns();
+  for (const [key, digit] of Object.entries(digits)) {
+    const index = COLUMN_COUNT - 1 - Number(key);
+    if (index < 0 || index >= COLUMN_COUNT || digit < 0 || digit > 19) continue;
+    columns[index] = { top: Math.floor(digit / TOP_VALUE), bottom: digit % TOP_VALUE };
+  }
+  return columns;
 }
 
 /** Convierte un valor a columnas. Devuelve null si no cabe en 13 columnas. */

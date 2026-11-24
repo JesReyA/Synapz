@@ -37,3 +37,40 @@ export interface CoachFeedback {
   tone: "wrong" | "hint";
   lines: string[];
 }
+
+/* ---------- Guía de operaciones ---------- */
+
+export type GuideOperationId = "addition" | "subtraction" | "multiplication" | "division";
+
+/** Dígito (0-19) de cada potencia de 20. Las potencias que no aparecen valen 0. */
+export type PowerDigits = Record<number, number>;
+
+export interface GuideStep {
+  title: string;
+  text: string;
+  board1: PowerDigits;
+  /** Solo en operaciones con dos tableros. */
+  board2?: PowerDigits;
+  /** Potencias de 20 que el paso quiere destacar. */
+  highlight?: number[];
+}
+
+export interface GuideOperation {
+  id: GuideOperationId;
+  label: string;
+  formula: string;
+  intro: string[];
+  steps: GuideStep[];
+  /** Si la operación necesita el modo de 2 ábacos. */
+  twoBoards: boolean;
+  /** Aviso que se muestra al cargar el resultado en el ábaco. */
+  note?: string;
+}
+
+/** Estado que la guía pide cargar en el ábaco virtual. */
+export interface AbacusSetup {
+  board1: BoardColumns;
+  /** null: no tocar el Tablero 2. */
+  board2: BoardColumns | null;
+  note?: string;
+}
