@@ -28,7 +28,7 @@ def evaluate_feyn_explanation(topic: str, material: str, explanation: str) -> Fe
 
     #Genera la petición con las características de la misma y la respuesta
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model=settings.GEMINI_MODEL,
         contents=prompt,
         config=types.GenerateContentConfig(
             system_instruction=FEYN_SYSTEM_PROMPT,

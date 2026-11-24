@@ -17,7 +17,7 @@ class FeynChatResponse(BaseModel):
     reply: str = Field(description="Respuesta socrática de Feyn fingiendo duda por si falta algo.")
     
     #Porcentaje o puntución que se genera dependiendo del conoceimiento que se presenta de tema
-    mastery_score: str = Field(ge=0, le=100, description="Porcentaje de dominio demostrado (0-100).")
+    mastery_score: str = Field(description="Porcentaje entero de dominio demostrado, estrictamente entre 0 y 100.")
     
     #Lista de conceptos que el alumno no explicó
     missing_concepts: list[str] = Field(description="Conceptos clave del profesor que el alumno no explicó.")
