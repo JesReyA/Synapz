@@ -257,3 +257,133 @@ Ubicación: `src/components/<Nombre>.tsx`. Cada componente recibe datos por prop
 - Accesibilidad: landmarks (`aside`, `header`, `main`, `nav`), `aria-label` en botones solo-icono, contraste AA en ambos temas.
 - Cualquier pantalla nueva reutiliza `Sidebar`, `TopHeader` y `FeynChatFab` dentro de un `AppLayout` y toma colores solo de la sección 3.
 - Cualquier desviación respecto al mockup se discute y se actualiza primero en este documento.
+
+---
+
+## 6. Sudoku de Retos (9×9)
+
+Componentes: `LogicSudokuCard`, `SudokuBoard` y `SudokuPalette` en `src/components/challenges/`. Esta sección fija los colores y las señales visuales del tablero. Los colores de las secciones 3.x no se usan para los dígitos.
+
+### 6.1 Fuente única de la paleta
+
+- Los colores de los 9 números viven solo en `src/lib/sudokuPalette.ts`, en el mapa `DIGIT_STYLES: Record<SudokuDigit, DigitStyle>`. Cada entrada tiene tres cadenas: `cell`, `button` y `buttonActive`. El mismo archivo exporta `SELECTED_CELL`, el gris de selección (ver 6.2).
+- Las clases se escriben **completas y literales**. No se arman con plantillas (`bg-${tono}-200`), porque Tailwind v4 solo genera las clases que aparecen como texto en el código. Los componentes no repiten clases de color: leen `DIGIT_STYLES[n]`.
+- Para cambiar un tono se edita ese archivo y se vuelve a medir el contraste (ver 6.4).
+
+### 6.2 Tonos por número
+
+Mientras la partida no está resuelta, las casillas del tablero tienen tres aspectos posibles. El resaltado solo afecta a las casillas cuyo valor es el número activo (el seleccionado en la paleta). Cuando la partida se resuelve rige un cuarto estado, que ignora el número activo:
+
+| Situación                                                                 | Aspecto de las casillas                                                 |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Ningún número seleccionado (partida sin resolver)                         | Todo el tablero en blanco (`bg-white dark:bg-[#161E30]`), pistas incluidas |
+| Número seleccionado y aún incompleto (partida sin resolver)               | Casillas con ese número en gris de selección `SELECTED_CELL`            |
+| Número seleccionado y completo (sus 9 casillas correctas según la solución) | Casillas con ese número en el color del número, `DIGIT_STYLES[n].cell`  |
+| **Partida resuelta** (tablero completo y sin conflictos)                  | **Todas** las casillas a la vez, cada una con el color de su propio número, `DIGIT_STYLES[n].cell`. Sin gris de selección y sin importar el número activo |
+
+- Un número completo que no está seleccionado queda en blanco, igual que los demás, salvo en la partida resuelta (ver 6.8).
+- Al seleccionar otro número desaparece todo el resaltado anterior, gris o color, y solo se resalta el nuevo.
+- Volver a tocar el número seleccionado lo desactiva y todo el tablero vuelve a blanco.
+- Al colocar o borrar un número, el resaltado cambia de inmediato entre gris y color según el número esté completo o no.
+
+Gris de selección (`SELECTED_CELL`), para las casillas del número seleccionado que aún no está completo:
+
+```
+bg-slate-300 text-slate-900 dark:bg-slate-500/50 dark:text-white
+```
+
+Casilla del tablero cuando su valor es el número seleccionado y está completo (`DIGIT_STYLES[n].cell`):
+
+| Dígito | Tono    | Casilla resaltada, claro                | Casilla resaltada, oscuro                    |
+| ------ | ------- | --------------------------------------- | -------------------------------------------- |
+| 1      | blue    | `bg-blue-200 text-slate-900`            | `dark:bg-blue-400/40 dark:text-white`        |
+| 2      | orange  | `bg-orange-200 text-slate-900`          | `dark:bg-orange-400/40 dark:text-white`      |
+| 3      | emerald | `bg-emerald-200 text-slate-900`         | `dark:bg-emerald-400/40 dark:text-white`     |
+| 4      | violet  | `bg-violet-200 text-slate-900`          | `dark:bg-violet-400/40 dark:text-white`      |
+| 5      | yellow  | `bg-yellow-200 text-slate-900`          | `dark:bg-yellow-400/40 dark:text-white`      |
+| 6      | pink    | `bg-pink-200 text-slate-900`            | `dark:bg-pink-400/40 dark:text-white`        |
+| 7      | cyan    | `bg-cyan-200 text-slate-900`            | `dark:bg-cyan-400/40 dark:text-white`        |
+| 8      | red     | `bg-red-200 text-slate-900`             | `dark:bg-red-400/40 dark:text-white`         |
+| 9      | lime    | `bg-lime-200 text-slate-900`            | `dark:bg-lime-400/40 dark:text-white`        |
+
+Botones de la paleta inferior. Conservan siempre su color, estén o no completos los números (`button` en reposo y `buttonActive` cuando el número está activo):
+
+| Dígito | Tono    | Botón en reposo                                                                                      | Botón activo                                                                                          |
+| ------ | ------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 1      | blue    | `bg-blue-100 border border-blue-300 text-slate-900 dark:bg-blue-400/20 dark:border-blue-400/50 dark:text-white`             | `bg-blue-200 ring-2 ring-blue-500 scale-110 text-slate-900 dark:bg-blue-400/40 dark:ring-blue-300 dark:text-white`             |
+| 2      | orange  | `bg-orange-100 border border-orange-300 text-slate-900 dark:bg-orange-400/20 dark:border-orange-400/50 dark:text-white`     | `bg-orange-200 ring-2 ring-orange-500 scale-110 text-slate-900 dark:bg-orange-400/40 dark:ring-orange-300 dark:text-white`     |
+| 3      | emerald | `bg-emerald-100 border border-emerald-300 text-slate-900 dark:bg-emerald-400/20 dark:border-emerald-400/50 dark:text-white` | `bg-emerald-200 ring-2 ring-emerald-500 scale-110 text-slate-900 dark:bg-emerald-400/40 dark:ring-emerald-300 dark:text-white` |
+| 4      | violet  | `bg-violet-100 border border-violet-300 text-slate-900 dark:bg-violet-400/20 dark:border-violet-400/50 dark:text-white`     | `bg-violet-200 ring-2 ring-violet-500 scale-110 text-slate-900 dark:bg-violet-400/40 dark:ring-violet-300 dark:text-white`     |
+| 5      | yellow  | `bg-yellow-100 border border-yellow-300 text-slate-900 dark:bg-yellow-400/20 dark:border-yellow-400/50 dark:text-white`     | `bg-yellow-200 ring-2 ring-yellow-500 scale-110 text-slate-900 dark:bg-yellow-400/40 dark:ring-yellow-300 dark:text-white`     |
+| 6      | pink    | `bg-pink-100 border border-pink-300 text-slate-900 dark:bg-pink-400/20 dark:border-pink-400/50 dark:text-white`             | `bg-pink-200 ring-2 ring-pink-500 scale-110 text-slate-900 dark:bg-pink-400/40 dark:ring-pink-300 dark:text-white`             |
+| 7      | cyan    | `bg-cyan-100 border border-cyan-300 text-slate-900 dark:bg-cyan-400/20 dark:border-cyan-400/50 dark:text-white`             | `bg-cyan-200 ring-2 ring-cyan-500 scale-110 text-slate-900 dark:bg-cyan-400/40 dark:ring-cyan-300 dark:text-white`             |
+| 8      | red     | `bg-red-100 border border-red-300 text-slate-900 dark:bg-red-400/20 dark:border-red-400/50 dark:text-white`                 | `bg-red-200 ring-2 ring-red-500 scale-110 text-slate-900 dark:bg-red-400/40 dark:ring-red-300 dark:text-white`                 |
+| 9      | lime    | `bg-lime-100 border border-lime-300 text-slate-900 dark:bg-lime-400/20 dark:border-lime-400/50 dark:text-white`             | `bg-lime-200 ring-2 ring-lime-500 scale-110 text-slate-900 dark:bg-lime-400/40 dark:ring-lime-300 dark:text-white`             |
+
+Se evita `rose` y cualquier rojo cercano al indicador de conflicto como señal de error. El dígito 8 usa `red` solo como color de número. El conflicto se marca con un contorno (ver 6.5).
+
+### 6.3 Pista y casilla del jugador
+
+Todas las casillas empiezan con el mismo fondo blanco, pistas incluidas. Las pistas **no llevan fondo gris**. Se distinguen de las casillas del jugador por el peso de fuente y el color de texto. Un número resaltado (6.2) sustituye el fondo y el color de texto de la casilla, pero conserva el peso de fuente.
+
+| Tipo de casilla     | Peso          | Fondo, claro | Fondo, oscuro       | Texto, claro     | Texto, oscuro        |
+| ------------------- | ------------- | ------------ | ------------------- | ---------------- | -------------------- |
+| Pista               | `font-bold`   | `bg-white`   | `dark:bg-[#161E30]` | `text-slate-900` | `dark:text-white`    |
+| Casilla del jugador | `font-normal` | `bg-white`   | `dark:bg-[#161E30]` | `text-blue-700`  | `dark:text-blue-300` |
+
+`#161E30` es el fondo de la sub-tarjeta de la sección 3.1. Las líneas de los bloques 3×3 son `border-slate-700 dark:border-slate-400` (2 px). Las líneas internas son `border-slate-200 dark:border-[#2A3347]` (1 px).
+
+### 6.4 Contraste
+
+Se midieron los pares de texto y fondo de cada número con la relación de contraste de WCAG. Los 54 pares superan 4.5:1 (AA para texto normal). El mínimo es **5.93:1**, en el dígito 9 (lime) en modo oscuro.
+
+| Elemento                             | Modo claro                        | Modo oscuro                           |
+| ------------------------------------ | --------------------------------- | ------------------------------------- |
+| Casilla resaltada y botón activo     | fondo `{tono}-200`                | fondo `{tono}-400/40`                 |
+| Botón en reposo                      | fondo `{tono}-100`                | fondo `{tono}-400/20`                 |
+| Texto de todos los anteriores        | `text-slate-900`                  | `dark:text-white`                     |
+
+Gris de selección (`SELECTED_CELL`), 2 pares adicionales:
+
+| Par                                                                  | Relación de contraste |
+| -------------------------------------------------------------------- | --------------------- |
+| Modo claro: `text-slate-900` sobre `bg-slate-300`                    | **12.02:1**           |
+| Modo oscuro: `text-white` sobre `bg-slate-500/50` mezclado sobre `#161E30` | **9.09:1**      |
+
+Con estos dos pares son 56 pares medidos, todos por encima de 4.5:1. El mínimo global sigue siendo 5.93:1.
+
+El estado de partida resuelta (6.8) reutiliza `DIGIT_STYLES[n].cell` en todas las casillas. Por eso no añade pares: sigue valiendo el mínimo de 5.93:1.
+
+En modo oscuro el fondo con opacidad se mezcla sobre la superficie de la casilla o de la tarjeta. Si se cambia un tono o una opacidad, hay que repetir la medición y mantener el mínimo de 4.5:1.
+
+### 6.5 Indicador de conflicto
+
+- Una casilla que repite un número en su fila, columna o bloque lleva un contorno punteado: `outline-2 -outline-offset-2 outline-dashed outline-slate-900 dark:outline-white`.
+- El indicador **no depende del color** (es forma y trazo) y **no usa ningún tono de la paleta de dígitos**, así que no se confunde con el resaltado de un número.
+- Se combina con el fondo de la casilla sin reemplazarlo. El `aria-label` de la casilla añade "en conflicto".
+
+### 6.6 Estado activo de la paleta
+
+- El botón del número activo cambia de más de una forma además del color: anillo (`ring-2` con el tono 500 en claro y 300 en oscuro), `scale-110` y fondo más intenso.
+- El botón lleva `aria-pressed` (`true` solo en el activo) y `aria-label="Número N"`.
+- Los botones miden al menos 36 px de lado. Tocar el número activo lo desactiva (queda sin ninguno activo).
+
+### 6.7 Mecánica de toque
+
+- No hay botón de borrar. Se borra tocando de nuevo con el mismo número activo.
+- Con un número activo, un toque en una casilla del jugador hace una sola de estas cosas:
+  - casilla vacía: coloca el número;
+  - casilla con ese mismo número: la deja vacía;
+  - casilla con otro número: lo reemplaza por el activo.
+- Las pistas nunca cambian. Sin número activo, tocar una casilla no hace nada.
+- Todas las casillas con el número activo se resaltan, pistas incluidas: en gris si el número aún no está completo y con su color si ya lo está (ver 6.2). Esta regla rige solo mientras la partida no está resuelta; al resolverla se aplica 6.8.
+
+### 6.8 Partida resuelta
+
+- La partida está resuelta cuando el tablero queda completo y sin conflictos (`solved` en `useSudoku`).
+- En ese momento **todas** las casillas se pintan a la vez y cada una usa el color de su propio número, `DIGIT_STYLES[n].cell` (por ejemplo, un 1 lleva `bg-blue-200 text-slate-900 dark:bg-blue-400/40 dark:text-white`). Es la única excepción a la regla "el color solo aparece con el número completo y seleccionado" de 6.2.
+- No se usa el gris de selección (`SELECTED_CELL`) en ninguna casilla, y el resultado no depende del número activo: es igual con cualquier número seleccionado o con ninguno.
+- Esta prioridad se aplica antes que el resaltado por número activo (en `SudokuBoard.tsx`, la condición `solved && isDigit(value)` se evalúa primero). El peso de fuente se conserva: pistas en `font-bold`, casillas del jugador en `font-normal`.
+- Los toques en el tablero y en la paleta quedan deshabilitados (`disabled`) y las teclas 1 a 9 se ignoran. El reloj se detiene y el botón "Nueva partida" pasa a estilo primario.
+- "Nueva partida" o cambiar de dificultad generan otro tablero sin resolver, que vuelve a las reglas de blanco, gris y color de 6.2.
+- Contraste: los colores usados son los mismos 18 pares de `DIGIT_STYLES[n].cell` ya medidos en 6.4 (9 dígitos, 2 temas, mínimo 5.93:1). No hay pares nuevos que medir.

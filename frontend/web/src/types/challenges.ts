@@ -113,19 +113,15 @@ export interface MentalLevelConfig {
 
 /* ---------- Sudoku (solo cliente) ---------- */
 
-export type SudokuSize = 6 | 9;
 export type SudokuDifficulty = "facil" | "medio" | "dificil";
 
-export interface SudokuGeometry {
-  size: SudokuSize;
-  boxRows: number;
-  boxCols: number;
-}
+/** Número que el jugador puede elegir en la paleta. */
+export type SudokuDigit = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
-export interface SudokuPuzzle extends SudokuGeometry {
+export interface SudokuPuzzle {
   id: string;
   difficulty: SudokuDifficulty;
-  /** Tablero inicial en orden de filas. 0 = celda vacía. */
+  /** Tablero inicial en orden de filas (81 valores). 0 = celda vacía. */
   cells: number[];
   solution: number[];
 }

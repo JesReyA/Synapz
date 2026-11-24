@@ -117,7 +117,7 @@ Como alumno, quiero jugar contra el reloj y competir con mi grupo.
 - CA2: Al terminar, mi puntaje se guarda y el ranking del aula se actualiza en vivo (Realtime) sin recargar.
 - CA3: El ranking muestra posición, nombre y puntos (incluidos los extra del profesor).
 - CA4: Sección recreativa de **rachas entre amigos** (estilo TikTok): días consecutivos de actividad y comparación con compañeros del aula.
-- CA5: **Sudokus** 6x6 y 9x9 en niveles fácil, medio y difícil, con validación de errores y temporizador.
+- CA5: **Sudoku** 9x9 en niveles fácil, medio y difícil, con validación de errores y temporizador. Los números son de colores: al elegir un número se resaltan sus iguales en el tablero, y se coloca o se quita tocando las casillas (sin botón de borrar). Las pistas iniciales no se modifican.
 
 ---
 

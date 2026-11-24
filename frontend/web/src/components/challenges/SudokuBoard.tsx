@@ -1,33 +1,54 @@
+import { useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import type { SudokuPuzzle } from "../../types/challenges.ts";
+import { BOX, SIZE } from "../../lib/sudoku.ts";
+import { DIGIT_STYLES, SELECTED_CELL } from "../../lib/sudokuPalette.ts";
+import type { SudokuDigit, SudokuPuzzle } from "../../types/challenges.ts";
 
 interface SudokuBoardProps {
   puzzle: SudokuPuzzle;
-  values: number[];
-  selected: number | null;
-  conflicts: Set<number>;
-  onSelect: (index: number) => void;
-  onInput: (value: number) => void;
-  onMove: (dRow: number, dCol: number) => void;
+  values: readonly number[];
+  activeDigit: SudokuDigit | null;
+  /** Números con sus 9 casillas correctas: al activarlos se pintan con su color. */
+  completedDigits: ReadonlySet<SudokuDigit>;
+  conflicts: ReadonlySet<number>;
+  /** Partida resuelta: cada casilla se pinta con el color de su número. */
+  solved: boolean;
+  /** Partida resuelta: los toques se ignoran. */
+  disabled: boolean;
+  onCellTap: (index: number) => void;
 }
 
-const COLS: Record<number, string> = { 6: "grid-cols-6", 9: "grid-cols-9" };
-const CELL: Record<number, string> = { 6: "size-11 text-xl sm:size-12", 9: "size-8 text-base sm:size-10 sm:text-lg" };
+function isDigit(value: number): value is SudokuDigit {
+  return Number.isInteger(value) && value >= 1 && value <= 9;
+}
 
-export function SudokuBoard({ puzzle, values, selected, conflicts, onSelect, onInput, onMove }: SudokuBoardProps) {
-  const n = puzzle.size;
-  const selRow = selected === null ? -1 : Math.floor(selected / n);
-  const selCol = selected === null ? -1 : selected % n;
+export function SudokuBoard({
+  puzzle,
+  values,
+  activeDigit,
+  completedDigits,
+  conflicts,
+  solved,
+  disabled,
+  onCellTap,
+}: SudokuBoardProps) {
+  const [focusIndex, setFocusIndex] = useState(0);
+  const cellRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  function handleKey(e: KeyboardEvent<HTMLDivElement>) {
-    if (/^[1-9]$/.test(e.key)) {
-      onInput(Number(e.key));
-    } else if (e.key === "Backspace" || e.key === "Delete" || e.key === "0") {
-      onInput(0);
-    } else if (e.key === "ArrowUp") onMove(-1, 0);
-    else if (e.key === "ArrowDown") onMove(1, 0);
-    else if (e.key === "ArrowLeft") onMove(0, -1);
-    else if (e.key === "ArrowRight") onMove(0, 1);
+  function moveFocus(from: number, dRow: number, dCol: number) {
+    const row = Math.floor(from / SIZE) + dRow;
+    const col = (from % SIZE) + dCol;
+    if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return;
+    const next = row * SIZE + col;
+    setFocusIndex(next);
+    cellRefs.current[next]?.focus();
+  }
+
+  function handleKey(e: KeyboardEvent<HTMLButtonElement>, index: number) {
+    if (e.key === "ArrowUp") moveFocus(index, -1, 0);
+    else if (e.key === "ArrowDown") moveFocus(index, 1, 0);
+    else if (e.key === "ArrowLeft") moveFocus(index, 0, -1);
+    else if (e.key === "ArrowRight") moveFocus(index, 0, 1);
     else return;
     e.preventDefault();
   }
@@ -35,46 +56,66 @@ export function SudokuBoard({ puzzle, values, selected, conflicts, onSelect, onI
   return (
     <div
       role="grid"
-      aria-label={`Tablero de sudoku ${n} por ${n}`}
-      tabIndex={0}
-      onKeyDown={handleKey}
-      className={`grid w-fit ${COLS[n]} overflow-hidden rounded-xl border-2 border-slate-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none dark:border-slate-400 dark:focus-visible:ring-offset-[#131A29]`}
+      aria-label={`Tablero de sudoku ${SIZE} por ${SIZE}`}
+      className="grid w-full max-w-[22rem] grid-cols-9 overflow-hidden rounded-xl border-2 border-slate-700 sm:max-w-md dark:border-slate-400"
     >
       {values.map((value, i) => {
-        const r = Math.floor(i / n);
-        const c = i % n;
+        const r = Math.floor(i / SIZE);
+        const c = i % SIZE;
         const given = puzzle.cells[i] !== 0;
-        const isSelected = selected === i;
-        const related = !isSelected && selected !== null && (r === selRow || c === selCol);
         const wrong = conflicts.has(i);
-        const thickRight = (c + 1) % puzzle.boxCols === 0 && c !== n - 1;
-        const thickBottom = (r + 1) % puzzle.boxRows === 0 && r !== n - 1;
+        const highlighted = activeDigit !== null && value === activeDigit && isDigit(value);
 
-        const bg = isSelected
-          ? "bg-blue-200 dark:bg-blue-500/40"
-          : wrong
-            ? "bg-rose-100 dark:bg-rose-500/20"
-            : related
-              ? "bg-blue-50 dark:bg-[#1B2438]"
-              : "bg-white dark:bg-[#161E30]";
-        const text = wrong
-          ? "text-rose-600 dark:text-rose-400"
-          : given
-            ? "font-bold text-slate-900 dark:text-white"
-            : "font-semibold text-blue-600 dark:text-blue-300";
+        // Partida resuelta: cada casilla lleva el color de su número, sin gris y sin
+        // depender del número activo. Si no, blanco por defecto. Solo el número activo
+        // se resalta: gris si falta algún lugar, color propio cuando está completo.
+        const look =
+          solved && isDigit(value)
+            ? DIGIT_STYLES[value].cell
+            : highlighted
+              ? completedDigits.has(value)
+                ? DIGIT_STYLES[value].cell
+                : SELECTED_CELL
+              : given
+                ? "bg-white text-slate-900 dark:bg-[#161E30] dark:text-white"
+                : "bg-white text-blue-700 dark:bg-[#161E30] dark:text-blue-300";
+        const weight = given ? "font-bold" : "font-normal";
+        const conflictMark = wrong
+          ? "outline-2 -outline-offset-2 outline-dashed outline-slate-900 dark:outline-white"
+          : "focus-visible:outline-none";
+        const borderRight =
+          c === SIZE - 1
+            ? ""
+            : (c + 1) % BOX === 0
+              ? "border-r-2 border-r-slate-700 dark:border-r-slate-400"
+              : "border-r border-r-slate-200 dark:border-r-[#2A3347]";
+        const borderBottom =
+          r === SIZE - 1
+            ? ""
+            : (r + 1) % BOX === 0
+              ? "border-b-2 border-b-slate-700 dark:border-b-slate-400"
+              : "border-b border-b-slate-200 dark:border-b-[#2A3347]";
+
+        const label = `Fila ${r + 1}, columna ${c + 1}: ${value === 0 ? "vacía" : value}${given ? ", pista" : ""}${wrong ? ", en conflicto" : ""}`;
 
         return (
           <button
             key={i}
+            ref={(el) => {
+              cellRefs.current[i] = el;
+            }}
             type="button"
             role="gridcell"
-            tabIndex={-1}
-            aria-selected={isSelected}
-            aria-label={`Fila ${r + 1}, columna ${c + 1}${given ? ", pista" : ""}${wrong ? ", error" : ""}: ${value === 0 ? "vacía" : value}`}
-            onClick={() => onSelect(i)}
-            className={`${CELL[n]} grid place-items-center border-slate-200 tabular-nums transition-colors duration-100 dark:border-[#2A3347] ${bg} ${text} ${
-              thickRight ? "border-r-2 border-r-slate-700 dark:border-r-slate-400" : "border-r"
-            } ${thickBottom ? "border-b-2 border-b-slate-700 dark:border-b-slate-400" : "border-b"}`}
+            tabIndex={i === focusIndex ? 0 : -1}
+            aria-label={label}
+            aria-disabled={disabled || undefined}
+            onFocus={() => setFocusIndex(i)}
+            onClick={() => {
+              setFocusIndex(i);
+              if (!disabled) onCellTap(i);
+            }}
+            onKeyDown={(e) => handleKey(e, i)}
+            className={`grid aspect-square min-w-0 place-items-center text-base tabular-nums transition-colors duration-100 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset sm:text-lg dark:focus-visible:ring-blue-300 ${look} ${weight} ${conflictMark} ${borderRight} ${borderBottom}`}
           >
             {value === 0 ? "" : value}
           </button>
