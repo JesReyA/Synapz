@@ -387,3 +387,275 @@ En modo oscuro el fondo con opacidad se mezcla sobre la superficie de la casilla
 - Los toques en el tablero y en la paleta quedan deshabilitados (`disabled`) y las teclas 1 a 9 se ignoran. El reloj se detiene y el botón "Nueva partida" pasa a estilo primario.
 - "Nueva partida" o cambiar de dificultad generan otro tablero sin resolver, que vuelve a las reglas de blanco, gris y color de 6.2.
 - Contraste: los colores usados son los mismos 18 pares de `DIGIT_STYLES[n].cell` ya medidos en 6.4 (9 dígitos, 2 temas, mínimo 5.93:1). No hay pares nuevos que medir.
+
+---
+
+## 7. Retos: cuadrícula Masonry y juegos
+
+Páginas y componentes: `src/pages/RetosPage.tsx` y `src/components/games/` (más los tres juegos anteriores, que siguen en `src/components/challenges/`). La lógica de cada juego vive en `src/lib/games/` y el estado en `src/hooks/`; esta sección fija solo la interfaz. Todo se ejecuta en el navegador, sin llamadas de red. Los colores de las secciones 3.x se reutilizan; los de piezas, números y símbolos de cada juego se fijan aquí.
+
+### 7.1 Layout de Retos
+
+`RetosPage` guarda `openGame: GameId | null` (y `lastOpened`, el último juego abierto). Todo el contenido va en un `grid` de dos columnas:
+
+```
+grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] md:gap-5
+```
+
+| Zona                                | Contenido                                                                                 | Clases clave                                              |
+| ----------------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Columna principal                   | `GamesMasonry` si `openGame === null`; si no, `GameView` con el juego abierto             | `min-w-0`                                                 |
+| Columna derecha (siempre visible)   | `LiveLeaderboard` (ranking) arriba y `FriendsStreakPanel` (racha y puntos de la semana) debajo | `flex min-w-0 flex-col gap-4 md:gap-5 lg:sticky lg:top-6 lg:self-start` |
+
+- La columna derecha se muestra con la cuadrícula y con cualquier juego abierto. El ranking conserva las actualizaciones en vivo de la Batalla rápida porque `useLeaderboard` se queda en `RetosPage`.
+- Debajo de `lg` hay una sola columna: primero el contenido principal y debajo la columna derecha, con el mismo orden (ranking y luego racha).
+- `min-w-0` en ambas columnas evita que un tablero ancho desborde el grid. Cada juego limita su propio tablero con un ancho máximo y lo centra (`mx-auto w-full max-w-[…]`).
+- `openGame` no se persiste: al cambiar de pestaña y volver, Retos empieza otra vez en la cuadrícula.
+- `GAME_COMPONENTS` (`gameRegistry.tsx`) es un `Record<GameId, ComponentType>`: TypeScript marca un error si falta algún juego. Solo se monta el juego abierto, así que los temporizadores y los listeners de los demás no existen.
+
+### 7.2 Cuadrícula Masonry (`GamesMasonry` y `GameTile`)
+
+- Contenedor: `section` con título `h2` "Elige un juego" (`text-sm font-semibold text-slate-900 dark:text-white`) y, debajo, un `div role="list"` con `columns-1 gap-4 sm:columns-2 xl:columns-3 md:gap-5`. Es Masonry con columnas CSS de Tailwind, sin librería.
+- Cada tarjeta va en un `div role="listitem"` con `mb-4 break-inside-avoid md:mb-5`, para que no se parta entre columnas.
+
+| Ancho         | Columnas |
+| ------------- | -------- |
+| `< sm`        | 1        |
+| `sm` a `< xl` | 2        |
+| `xl` o más    | 3        |
+
+- Orden: el del catálogo (`lib/games/catalog.ts`). Con columnas CSS las tarjetas se reparten de arriba hacia abajo por columna; el orden de tabulación sigue el del catálogo.
+- Sin scroll horizontal a 320 px: la tarjeta ocupa el ancho de su columna.
+
+**Altura de la tarjeta.** Sale del contenido. `GameInfo.height` decide si lleva vista previa y de qué tamaño:
+
+| `height` | Vista previa                 | Juegos                                    |
+| -------- | ---------------------------- | ----------------------------------------- |
+| `short`  | Ninguna                      | Cálculo mental, Juego del 15, Memorama    |
+| `medium` | Pequeña (`size="small"`)     | Batalla rápida, Buscaminas, Tetris        |
+| `tall`   | Grande (`size="large"`)      | Sudoku de lógica, Ajedrez, Tangram        |
+
+**Vista previa (`GamePreview`).** Figura decorativa y estática, sin lógica ni temporizadores: `span aria-hidden="true"` con `flex items-center justify-center rounded-xl bg-slate-50 p-3 dark:bg-[#161E30]` (`py-6` en la grande). Celdas de `size-6 text-xs` (pequeña) o `size-9 text-base` (grande). Cada juego tiene la suya: mini tablero de ajedrez 4×4 con glifos, rejilla 3×3 de sudoku, buscaminas 4×4 con una bandera, columnas de bloques de Tetris, cartas del Memorama, siluetas SVG del Tangram, fichas 1 a 15 en 4×4, y para la Batalla rápida una barra de tiempo y cuatro opciones. Cálculo mental tiene una función de vista previa (`7 × 8 = ?`) pero su tarjeta es `short` y no la muestra.
+
+**Tarjeta (`GameTile`).** Un único `<button type="button">` que ocupa toda la tarjeta:
+
+```
+group flex w-full flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm
+transition duration-150 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md
+focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none
+motion-reduce:transition-none motion-reduce:hover:translate-y-0
+dark:border-[#222B3E] dark:bg-[#131A29] dark:shadow-none dark:hover:border-[#2d3a56] dark:focus-visible:ring-offset-[#0B0F1A]
+```
+
+- Contenido, de arriba abajo: cuadro de icono `size-10 rounded-xl` con el tono del juego y título (`text-sm font-semibold`), vista previa (si la altura la tiene), descripción (`text-xs leading-relaxed text-slate-500 dark:text-slate-400`), chips de etiquetas y la acción "Jugar" con `ArrowRight` (`text-xs font-semibold text-blue-600 dark:text-blue-300`).
+- Chip de etiqueta: `rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-[#1B2438] dark:text-slate-300`.
+- `aria-label="Jugar a {título}"` y `data-game-id` para devolverle el foco al volver.
+- Tonos del cuadro de icono (los mismos que `ChallengeCard`): `amber`, `blue`, `emerald` y `violet`, con `bg-{tono}-100 text-{tono}-600` en claro y `dark:bg-{tono}-400/15` (azul: `dark:bg-blue-500/20`) en oscuro.
+
+**Catálogo** (iconos de `lucide-react`):
+
+| Juego            | Icono         | Tono    | Altura   | Etiquetas                 |
+| ---------------- | ------------- | ------- | -------- | ------------------------- |
+| Batalla rápida   | `Zap`         | amber   | `medium` | Contra reloj, Ranking     |
+| Cálculo mental   | `Brain`       | blue    | `short`  | Matemáticas               |
+| Sudoku de lógica | `Grid3x3`     | emerald | `tall`   | Lógica                    |
+| Ajedrez          | `Crown`       | violet  | `tall`   | 2 jugadores, Estrategia   |
+| Juego del 15     | `LayoutGrid`  | blue    | `short`  | Lógica                    |
+| Buscaminas       | `Bomb`        | emerald | `medium` | Lógica, Tiempo            |
+| Tangram          | `Shapes`      | amber   | `tall`   | Geometría                 |
+| Tetris           | `Blocks`      | violet  | `medium` | Reflejos                  |
+| Memorama         | `Layers`      | amber   | `short`  | Memoria                   |
+
+### 7.3 Vista de un juego (`GameView`, `GameShell` y `ChallengeCard`)
+
+- `GameView` es un `div flex min-w-0 flex-col gap-4 md:gap-5` con un `h2 sr-only` (el título del juego), el botón "Volver a Retos" y el juego. El título visible lo pinta la `ChallengeCard` del juego, así que no se repite.
+- Botón "Volver a Retos": `SECONDARY_BUTTON` (de `ChallengeCard.tsx`) con `ArrowLeft` `size-3.5`. Al abrir un juego, el foco pasa a este botón. Al volver a la cuadrícula, `GamesMasonry` devuelve el foco a la tarjeta que se había abierto (`lastOpened`).
+- Cada juego nuevo se envuelve en `ChallengeCard` con el título, la descripción, el icono y el tono del catálogo (`gameInfo(id)`), igual que los tres anteriores.
+- `GameShell` es el marco común dentro de la tarjeta, de arriba abajo: fila de datos, el contenido del juego, y una fila final con el estado y el botón de reinicio.
+  - Fila de datos (`flex flex-wrap items-center gap-2`): el reloj (`Timer` + `role="timer"`, formato `mm:ss`) si el juego pasa `elapsed`, y un chip por cada dato (`label` y `value`). Chip: `rounded-full bg-slate-100 px-3 py-1 text-sm font-bold tabular-nums text-slate-900 dark:bg-[#1B2438] dark:text-white`.
+  - Estado: `p aria-live="polite"` con `rounded-xl px-3 py-2 text-sm font-medium`. Tonos:
+
+    | Tono      | Claro                            | Oscuro                                        |
+    | --------- | -------------------------------- | --------------------------------------------- |
+    | `neutral` | `bg-slate-50 text-slate-600`     | `dark:bg-[#161E30] dark:text-slate-300`       |
+    | `success` | `bg-emerald-100 text-emerald-700`| `dark:bg-emerald-400/15 dark:text-emerald-300`|
+    | `danger`  | `bg-rose-100 text-rose-700`      | `dark:bg-rose-500/15 dark:text-rose-300`      |
+
+  - Botón de reinicio con `RefreshCw`. Es `SECONDARY_BUTTON` durante la partida y pasa a `PRIMARY_BUTTON` (ámbar) cuando termina (`finished`). Texto por defecto "Nueva partida"; el Tangram usa "Reiniciar figura".
+
+### 7.4 Juegos
+
+Los tableros se dimensionan con un ancho máximo propio y se centran. Los colores de abajo son clases literales de los archivos indicados.
+
+#### 7.4.1 Ajedrez (`ChessGame`, `ChessBoard`, `ChessHistory`, `PromotionPicker`)
+
+Dos jugadores en el mismo dispositivo, sin IA ni reloj. Las blancas van abajo. Reglas: enroque, captura al paso, promoción, jaque, jaque mate, tablas por ahogado y por material insuficiente.
+
+- **Disposición.** Tablero y selector de promoción en una columna `flex-1`; historial a su derecha en `md` (`md:w-44 md:shrink-0`) y debajo en pantallas menores. Datos del `GameShell`: "Turno" (Blancas o Negras) y "Movimientos".
+- **Tablero.** `role="grid"` con `mx-auto w-full max-w-[28rem] rounded-xl border border-slate-300 dark:border-[#2A3347]`. 8 filas `grid grid-cols-8`; cada casilla es un `button role="gridcell"` con `aspect-square`. Coordenadas (números a la izquierda y letras abajo) en `text-[9px] sm:text-[10px] font-bold`.
+- **Piezas.** Glifos Unicode (`♔♕♖♗♘♙` blancas y `♚♛♜♝♞♟` negras) en `text-2xl sm:text-4xl`. Blancas: `text-white` con contorno oscuro; negras: `text-slate-900` con halo claro (`PIECE_COLOR_CLASS` en `lib/games/chessDisplay.ts`).
+- **Colores de casilla** (por prioridad, `squareBackground`):
+
+  | Estado                        | Claro                                      | Oscuro                                        |
+  | ----------------------------- | ------------------------------------------ | --------------------------------------------- |
+  | Rey en jaque                  | `bg-rose-300`                              | `dark:bg-rose-700`                            |
+  | Seleccionada                  | `bg-sky-300`                               | `dark:bg-sky-600`                             |
+  | Último movimiento (oscura)    | `bg-yellow-400`                            | `dark:bg-yellow-700`                          |
+  | Último movimiento (clara)     | `bg-yellow-200`                            | `dark:bg-yellow-600`                          |
+  | Casilla oscura                | `bg-amber-600`                             | `dark:bg-stone-600`                           |
+  | Casilla clara                 | `bg-amber-100`                             | `dark:bg-stone-400`                           |
+
+- **Señales no cromáticas.** Seleccionada: anillo `ring-2 ring-blue-600 ring-inset`. Destino legal: punto `size-2.5 sm:size-3.5 rounded-full bg-slate-900/50 dark:bg-white/60`. Captura: aro `border-[3px] border-slate-900/50 dark:border-white/60`. Rey en jaque: anillo `ring-rose-600` y el icono `TriangleAlert` en la esquina.
+- **Controles.** Toque o clic en una pieza propia la selecciona; toque en un destino legal mueve; toque en otra pieza propia cambia la selección; toque en cualquier otra casilla deselecciona. Con teclado, cada casilla es un botón: Tab para moverse y Enter o Espacio para tocar. `aria-label` de cada casilla: "e2, peón blanco, seleccionada, destino legal, captura, rey en jaque" (solo las partes que aplican; "vacía" si no hay pieza).
+- **Promoción.** Al llegar un peón a la última fila aparece `PromotionPicker` (`role="group"`) debajo del tablero con cuatro botones `size-12` (dama, torre, alfil, caballo) y "Cancelar". El foco inicial va al primer botón y el tablero no acepta toques hasta elegir.
+- **Historial.** `ChessHistory` lista los movimientos en notación algebraica en tres columnas `grid-cols-[2rem_1fr_1fr]` (número, Blancas, Negras), con `max-h-48 md:max-h-[22rem] overflow-y-auto`. Se desplaza al último movimiento y es enfocable (`tabIndex={0}`). Vacío: "Aún no hay movimientos.".
+- **Estados** (texto del `GameShell`):
+
+  | Situación            | Texto                                    | Tono      |
+  | -------------------- | ---------------------------------------- | --------- |
+  | Turno                | "Turno de las blancas." / "…negras."     | `neutral` |
+  | Jaque                | "Jaque. Turno de las …"                  | `danger`  |
+  | Promoción pendiente  | "Elige la pieza de promoción."           | `neutral` |
+  | Jaque mate           | "Jaque mate: ganan las …"                | `success` |
+  | Ahogado              | "Tablas por ahogado."                    | `neutral` |
+  | Material insuficiente| "Tablas por material insuficiente."      | `neutral` |
+
+  Con la partida terminada las casillas se marcan `aria-disabled` y el botón "Nueva partida" pasa a primario.
+
+#### 7.4.2 Juego del 15 (`SlidingPuzzleGame`)
+
+- **Tablero.** `role="grid"` de 4×4 con `mx-auto w-full max-w-[20rem] gap-2 rounded-2xl p-1` y `tabIndex={0}`. Cada ficha es un `button` en una celda `aspect-square`; el hueco es un `div aria-hidden` `bg-slate-100 dark:bg-[#1B2438]/40`.
+- **Fichas.** `rounded-xl border text-xl font-bold tabular-nums sm:text-2xl`. Movible (adyacente al hueco): `border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-[#2A3347] dark:bg-[#1B2438] dark:text-blue-100`. No movible o partida ganada: `border-slate-200 bg-white text-slate-900 dark:border-[#2A3347] dark:bg-[#161E30] dark:text-white`, con `aria-disabled`.
+- **Controles.** Clic o toque en una ficha adyacente al hueco. Teclado: con el tablero enfocado, las flechas mueven la ficha que quedaría en esa dirección (↑ sube la ficha de debajo del hueco, y así con las demás). `preventDefault` solo dentro del tablero.
+- **Datos y estados.** Reloj y "Movimientos". El reloj arranca con el primer movimiento y se detiene al ganar. Texto inicial: "Mueve las fichas para ordenarlas del 1 al 15." Al ganar: "¡Resuelto en N movimientos y mm:ss!" (`success`).
+
+#### 7.4.3 Buscaminas (`MinesweeperGame`, `MinesDifficultyPicker`)
+
+- **Barra superior.** Selector de dificultad segmentado (`role="radiogroup"`, "Fácil", "Medio", "Difícil", activo `bg-white text-blue-600 shadow-sm dark:bg-blue-500 dark:text-white`) y el botón "Modo bandera" (`aria-pressed`). Con el modo activo el botón pasa a `bg-amber-400 text-slate-900`.
+- **Dificultades** (`MINE_LEVELS`): Fácil 8×8 con 10 minas, Medio 10×10 con 20 y Difícil 12×12 con 30.
+- **Tablero.** Un contenedor `overflow-x-auto` envuelve el tablero (`role="grid"`, `mx-auto w-full max-w-[28rem] min-w-max gap-0.5 rounded-xl bg-slate-100 p-1 sm:p-1.5 dark:bg-[#1B2438]`). Las columnas son `grid-cols-[repeat(N,minmax(1.5rem,1fr))]` (N = 8, 10 o 12, clases literales), y cada casilla tiene `min-h-6 min-w-6`: **mínimo 24 px**. A ancho estrecho el tablero no se encoge por debajo de ese tamaño: se desplaza dentro de su propio contenedor, sin scroll horizontal de la página.
+- **Casillas.** `aspect-square rounded text-sm font-bold tabular-nums`.
+
+  | Vista              | Clases                                                                                 | Señal               |
+  | ------------------ | -------------------------------------------------------------------------------------- | ------------------- |
+  | Sin revelar        | `bg-slate-200 hover:bg-slate-300 dark:bg-[#2A3347] dark:hover:bg-[#344059]` con borde inferior interno | —                   |
+  | Revelada vacía     | `bg-white dark:bg-[#161E30]`                                                           | —                   |
+  | Número 1 a 8       | fondo de revelada y texto de la tabla siguiente                                        | cifra               |
+  | Bandera            | sin revelar + `text-amber-600 dark:text-amber-400`                                     | icono `Flag`        |
+  | Bandera errónea    | sin revelar + `text-rose-600 dark:text-rose-400`                                       | icono `FlagOff`     |
+  | Mina               | `bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300`                     | icono `Bomb`        |
+  | Mina que explotó   | `bg-rose-500 text-white dark:bg-rose-600`                                              | icono `Bomb`        |
+
+  | Número | Claro                   | Oscuro                       |
+  | ------ | ----------------------- | ---------------------------- |
+  | 1      | `text-blue-600`         | `dark:text-blue-400`         |
+  | 2      | `text-emerald-600`      | `dark:text-emerald-400`      |
+  | 3      | `text-rose-600`         | `dark:text-rose-400`         |
+  | 4      | `text-violet-700`       | `dark:text-violet-300`       |
+  | 5      | `text-amber-700`        | `dark:text-amber-400`        |
+  | 6      | `text-cyan-700`         | `dark:text-cyan-300`         |
+  | 7      | `text-slate-900`        | `dark:text-slate-100`        |
+  | 8      | `text-slate-500`        | `dark:text-slate-400`        |
+
+- **Controles.** Clic o toque revela. Bandera: clic derecho (`onContextMenu` con `preventDefault`), tecla `F` con la casilla enfocada, o el "Modo bandera", que hace que el toque coloque o quite la bandera (para pantallas táctiles). El primer clic es siempre seguro.
+- **Datos y estados.** Reloj (arranca al primer clic) y "Minas restantes" (minas menos banderas, puede ser negativo). Textos: "Revela una casilla para empezar.", "Jugando…", "¡Ganaste en mm:ss!" (`success`) y "¡Boom! Pisaste una mina." (`danger`). Al terminar, las casillas y el modo bandera quedan deshabilitados; al perder se muestran todas las minas y las banderas erróneas.
+- **Accesible.** `aria-label` por casilla: "Fila 3, columna 5: 2 minas cerca" (o "sin revelar", "bandera", "vacía", "mina"…). El tablero declara `aria-rowcount` y `aria-colcount`.
+
+#### 7.4.4 Tangram (`TangramGame`, `TangramBoard`)
+
+- **Figuras.** Cuatro, en botones de píldora (`role="group"` "Figura objetivo", `aria-pressed`): Cuadrado, Triángulo grande, Casa y Pez. Activa: `bg-blue-600 text-white dark:bg-blue-500`. Inactiva: `bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-[#1B2438] dark:text-blue-100`. Cambiar de figura reinicia las piezas y el reloj.
+- **Tablero.** `<svg>` con `viewBox` de 9×13 unidades (`BOARD_AREA`), `w-full max-w-[32rem] select-none rounded-2xl bg-slate-50 dark:bg-[#161E30]`. Arriba, la silueta objetivo (`fill-slate-200 dark:fill-[#2A3347]`); abajo, la zona de reserva con borde punteado (`stroke-slate-300 dark:stroke-[#2A3347]`) donde empiezan las 7 piezas.
+- **Colores de las piezas** (relleno y contorno, `PIECE_COLOR` en `TangramBoard.tsx`):
+
+  | Pieza              | Claro                                | Oscuro                                      |
+  | ------------------ | ------------------------------------ | ------------------------------------------- |
+  | Triángulo grande 1 | `fill-blue-400 stroke-blue-600`      | `dark:fill-blue-500 dark:stroke-blue-300`   |
+  | Triángulo grande 2 | `fill-cyan-400 stroke-cyan-600`      | `dark:fill-cyan-500 dark:stroke-cyan-300`   |
+  | Triángulo mediano  | `fill-emerald-400 stroke-emerald-600`| `dark:fill-emerald-500 dark:stroke-emerald-300` |
+  | Triángulo pequeño 1| `fill-amber-400 stroke-amber-600`    | `dark:fill-amber-400 dark:stroke-amber-200` |
+  | Triángulo pequeño 2| `fill-orange-400 stroke-orange-600`  | `dark:fill-orange-500 dark:stroke-orange-300` |
+  | Cuadrado           | `fill-violet-400 stroke-violet-600`  | `dark:fill-violet-500 dark:stroke-violet-300` |
+  | Paralelogramo      | `fill-pink-400 stroke-pink-600`      | `dark:fill-pink-500 dark:stroke-pink-300`   |
+
+- **Estados de la pieza.** Normal: contorno de su color, trazo 0.06. Seleccionada: contorno `stroke-slate-900 dark:stroke-white`, trazo 0.14. Bien colocada: contorno `stroke-emerald-500 dark:stroke-emerald-400`, que tiene prioridad sobre el de seleccionada. El resultado no depende solo del color: la pieza seleccionada tiene el trazo más grueso y el contador "Piezas bien colocadas N/7" se actualiza en el `GameShell`. Durante el arrastre, la pieza se vuelve a dibujar encima de las demás.
+- **Controles.**
+  - Ratón y toque: arrastrar con Pointer Events (`setPointerCapture`; `touch-none` en las piezas para que la página no se desplace). Al soltar, el centro de la pieza se ajusta a una rejilla de 0.25 y la pieza se mantiene dentro del tablero.
+  - Rotación en pasos de 45°: botones "↺ 45°" (`RotateCcw`, `aria-label="Rotar a la izquierda"`) y "↻ 45°" (`RotateCw`, "Rotar a la derecha"), y las teclas `Q` (izquierda) y `E` (derecha).
+  - Volteo: botón "Voltear" (`FlipHorizontal`) y tecla `F`. Solo actúa sobre el paralelogramo; con otra pieza el botón queda deshabilitado.
+  - Teclado: cada pieza es `role="button"` con `tabIndex={0}`; al recibir el foco se selecciona, y Enter o Espacio también la seleccionan. Con una pieza seleccionada, las flechas la mueven un paso de 0.25. Las teclas se escuchan en el contenedor del juego (`role="group"`, `tabIndex={0}`), no en `window`.
+  - Los botones de rotación y volteo (`SECONDARY_BUTTON` con `disabled:opacity-50`) se deshabilitan sin pieza seleccionada o con la figura completa.
+- **Validación.** Una pieza cuenta como bien colocada si su polígono coincide con un hueco de su mismo tipo con tolerancia de 0.2 unidades. Las dos piezas grandes y las dos pequeñas son intercambiables; el cuadrado girado 90° coincide y el paralelogramo volteado no.
+- **Datos y estados.** Reloj (arranca al mover, girar o voltear una pieza por primera vez) y "Piezas bien colocadas N/7". Texto: "Arrastra las piezas para llenar la silueta." Al completar: "¡Figura completa en mm:ss!" (`success`); las piezas dejan de moverse. Botón "Reiniciar figura".
+
+#### 7.4.5 Tetris (`TetrisGame`, `TetrisBoard`, `TetrisNext`)
+
+- **Tablero.** 10×20 (`grid-cols-10 grid-rows-20 gap-px`), `aspect-[1/2] w-full max-w-[18rem]`, marco `rounded-xl border border-slate-200 bg-slate-200 p-px dark:border-[#222B3E] dark:bg-[#222B3E]`. Celda vacía: `bg-slate-50 dark:bg-[#161E30]`. Con la partida en pausa o terminada el tablero baja a `opacity-40` y muestra una etiqueta ("Pausa" o "Game over") `rounded-full bg-white px-4 py-1.5 text-sm font-bold dark:bg-[#1B2438]`.
+- **Colores por pieza** (`components/games/tetrisStyles.ts`):
+
+  | Pieza | Relleno, claro    | Relleno, oscuro             | Sombra de caída (borde punteado) |
+  | ----- | ----------------- | --------------------------- | -------------------------------- |
+  | I     | `bg-cyan-400`     | `dark:bg-cyan-400/90`       | `border-cyan-500 bg-cyan-400/15` |
+  | O     | `bg-yellow-300`   | `dark:bg-yellow-300/90`     | `border-yellow-500 bg-yellow-300/15` |
+  | T     | `bg-violet-500`   | `dark:bg-violet-400/90`     | `border-violet-500 bg-violet-500/15` |
+  | S     | `bg-emerald-500`  | `dark:bg-emerald-400/90`    | `border-emerald-500 bg-emerald-500/15` |
+  | Z     | `bg-red-500`      | `dark:bg-red-400/90`        | `border-red-500 bg-red-500/15`   |
+  | J     | `bg-blue-500`     | `dark:bg-blue-400/90`       | `border-blue-500 bg-blue-500/15` |
+  | L     | `bg-orange-500`   | `dark:bg-orange-400/90`     | `border-orange-500 bg-orange-500/15` |
+
+  La sombra de caída usa `border border-dashed`; en oscuro el borde es el tono 300 de cada color.
+- **Siguientes piezas.** `TetrisNext` muestra las dos siguientes en miniaturas de 4×2 (`w-14`, celdas `h-3.5`), en un panel `rounded-xl bg-slate-50 dark:bg-[#161E30]` con la etiqueta "Siguiente". Va a la derecha del tablero desde `sm` y debajo en pantallas menores.
+- **Teclado** (en el contenedor con foco, `role="group"`, `tabIndex={0}`; `preventDefault` solo para estas teclas):
+
+  | Tecla              | Acción              |
+  | ------------------ | ------------------- |
+  | `←` `→`            | Mover               |
+  | `↓`                | Bajar una fila      |
+  | `↑` o `X`          | Rotar a la derecha  |
+  | `Z`                | Rotar a la izquierda|
+  | `Espacio`          | Caída rápida        |
+  | `P`                | Pausa o reanudar    |
+
+- **Botonera táctil.** Debajo del tablero, `grid grid-cols-3 gap-2` de ancho máximo `18rem` con seis botones de `min-h-11` (44 px): izquierda, rotar, derecha, bajar una fila, caída rápida y pausa o reanudar, con iconos `ArrowLeft`, `RotateCw`, `ArrowRight`, `ArrowDown`, `ChevronsDown` y `Pause` o `Play`. Estilo: `rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-[#1B2438] dark:text-blue-100`. Fuera de partida se marcan `aria-disabled` (opacidad 50 %).
+- **Reglas visibles.** Líneas: 1, 2, 3 y 4 líneas suman 100, 300, 500 y 800 puntos por el nivel. Bajar una fila suma 1 punto y la caída rápida 2 por fila. El nivel sube cada 10 líneas y el intervalo de caída es `max(100, 800 - (nivel - 1) × 70)` ms.
+- **Datos y estados.** Chips "Puntuación", "Líneas" y "Nivel". Textos: "Jugando. Flechas para mover, ↑ rotar, Espacio caída rápida, P pausa.", "En pausa." y "Game over. Puntuación final: N." (`danger`). Al reiniciar, el foco vuelve al contenedor del juego.
+
+#### 7.4.6 Memorama (`MemoryGame`, `MemoryLevelPicker`)
+
+- **Niveles** (`MEMORY_LEVELS`, selector segmentado `role="radiogroup"` "Nivel"): Fácil · 6 parejas (3×4), Medio · 8 parejas (4×4) y Difícil · 12 parejas (4×6). Cambiar de nivel reinicia la partida.
+- **Tablero.** `role="group"` con `mx-auto grid w-full max-w-[28rem] gap-1.5 sm:gap-2.5` y `grid-cols-4` o `grid-cols-6` (clases literales). Cada carta es un `button aspect-square`.
+- **Giro de carta.** Dos caras apiladas con `[transform-style:preserve-3d]` y `[backface-visibility:hidden]`; al revelarse la carta gira con `[transform:rotateY(180deg)]` y `transition-transform duration-300`. Con `motion-reduce:transition-none` el cambio es inmediato.
+- **Caras.**
+  - Reverso: `border-blue-200 bg-blue-100 text-blue-500 dark:border-[#2A3347] dark:bg-[#1B2438] dark:text-blue-300` con el icono `Sparkles`.
+  - Frente: `border-slate-200 bg-white dark:border-[#2A3347] dark:bg-[#161E30]`. Pareja encontrada: `border-emerald-300 bg-emerald-50 dark:border-emerald-400/40 dark:bg-emerald-400/15`.
+- **Símbolos.** 12, distintos por icono y por color (el icono basta para distinguirlos):
+
+  | Icono (`lucide-react`) | Claro                   | Oscuro                       |
+  | ---------------------- | ----------------------- | ---------------------------- |
+  | `Star`                 | `text-amber-600`        | `dark:text-amber-400`        |
+  | `Heart`                | `text-rose-600`         | `dark:text-rose-400`         |
+  | `Moon`                 | `text-indigo-600`       | `dark:text-indigo-300`       |
+  | `Sun`                  | `text-orange-600`       | `dark:text-orange-400`       |
+  | `Cloud`                | `text-sky-600`          | `dark:text-sky-400`          |
+  | `Flame`                | `text-red-600`          | `dark:text-red-400`          |
+  | `Leaf`                 | `text-emerald-600`      | `dark:text-emerald-400`      |
+  | `Bell`                 | `text-teal-600`         | `dark:text-teal-300`         |
+  | `Key`                  | `text-fuchsia-600`      | `dark:text-fuchsia-400`      |
+  | `Gem`                  | `text-cyan-600`         | `dark:text-cyan-300`         |
+  | `Music`                | `text-violet-600`       | `dark:text-violet-300`       |
+  | `Rocket`               | `text-blue-600`         | `dark:text-blue-400`         |
+
+- **Controles.** Clic, toque, o Tab y Enter o Espacio sobre una carta. Con un par fallido a la vista, las cartas dejan de responder (`aria-disabled`) y el par se oculta solo a los 900 ms (`MISMATCH_DELAY_MS`). Las cartas encontradas y las de una partida ganada tampoco responden.
+- **Datos y estados.** Reloj (arranca con el primer volteo y se detiene al ganar), "Intentos" (un intento por cada par de cartas volteadas) y "Parejas N/M". Textos: "Voltea dos cartas para encontrar una pareja.", "No coinciden. Se ocultarán en un momento." y "¡Encontraste todas las parejas en N intentos y mm:ss!" (`success`).
+- **Accesible.** `aria-label` por carta: "Carta 5, boca abajo", "Carta 5: estrella" o "Carta 5: estrella, encontrada", con `aria-pressed` cuando está a la vista.
+
+### 7.5 Accesibilidad y reglas comunes
+
+- **Estado anunciado.** El estado de cada partida va en una región `aria-live="polite"` (el `p` del `GameShell`). El reloj es un `role="timer"` con `aria-label="Tiempo transcurrido"`.
+- **Foco.** Todo elemento interactivo muestra `focus-visible:ring-2 focus-visible:ring-blue-500` (o `focus-visible:outline-2 outline-blue-500` en las casillas del ajedrez, que van pegadas entre sí). Al abrir un juego el foco pasa al botón "Volver a Retos"; al volver, regresa a su tarjeta. El selector de promoción del ajedrez toma el foco al aparecer.
+- **Teclado en el contenedor.** Los juegos con teclas propias (Juego del 15, Tangram y Tetris) las escuchan en su contenedor con `tabIndex={0}`, no en `window`, y llaman a `preventDefault` solo para sus teclas, así que no interfieren con el resto de la página. Las casillas del Buscaminas escuchan `F` en cada botón.
+- **Nada depende del color.** Banderas, minas, jaque, destinos legales, piezas seleccionadas y sombra de caída llevan además icono, forma, trazo o texto. Los números del Buscaminas y los símbolos del Memorama usan el color como refuerzo.
+- **Movimiento reducido.** Las transiciones y los desplazamientos de las tarjetas y del giro del Memorama llevan `motion-reduce:transition-none`, y la tarjeta del Masonry añade `motion-reduce:hover:translate-y-0`.
+- **Superficies.** Tarjetas `rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[#222B3E] dark:bg-[#131A29] dark:shadow-none`, sub-superficies `dark:bg-[#161E30]` y chips `dark:bg-[#1B2438]`, como en las secciones 3 y 4. Sin sombras en modo oscuro.
+- **Sin estilos en línea de color.** Los colores salen de clases literales de Tailwind (mapas `Record` con cadenas completas), nunca de plantillas ni de `style={{}}`. Los componentes de `components/games/` no usan el atributo `style`.
+- **Iconos.** Solo `lucide-react`, con `strokeWidth` 1.75 a 2 y `aria-hidden="true"` cuando son decorativos. Las piezas de ajedrez son glifos Unicode.
+- **Sin persistencia ni red.** Los juegos no usan `localStorage`, no guardan récords y no llaman al backend. Los temporizadores (`setInterval` o `setTimeout`) se limpian al reiniciar y al desmontar el juego.

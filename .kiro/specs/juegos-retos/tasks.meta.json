@@ -1,0 +1,422 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Tipos compartidos, catálogo, cronómetro y marco común": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905259
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494911637
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496180878
+      }
+    ],
+    "1.2 Cuadrícula Masonry, vista de juego y página de Retos": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905290
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496185291
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496523489
+      }
+    ],
+    "2.1 Motor: tablero y movimientos legales": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905312
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494912335
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496180942
+      }
+    ],
+    "2.2 Motor: estado de la partida y notación": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905334
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496186101
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496523545
+      }
+    ],
+    "2.3 Hook e interfaz": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905356
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496528630
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496767136
+      }
+    ],
+    "3.1 Motor": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905378
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494912970
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496181736
+      }
+    ],
+    "3.2 Hook e interfaz": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905397
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496186938
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496523932
+      }
+    ],
+    "4.1 Motor": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905415
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494913790
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496182329
+      }
+    ],
+    "4.2 Hook e interfaz": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905438
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496187755
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496524752
+      }
+    ],
+    "5.1 Geometría, figuras y validación": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905456
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494914408
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496182950
+      }
+    ],
+    "5.2 Hook e interfaz": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905472
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496188146
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496525371
+      }
+    ],
+    "6.1 Motor": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905492
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496529461
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496766324
+      }
+    ],
+    "6.2 Hook e interfaz": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905518
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496770396
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795497691420
+      }
+    ],
+    "7.1 Motor": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905542
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496529984
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496767711
+      }
+    ],
+    "7.2 Hook e interfaz": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905568
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496771131
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795497691375
+      }
+    ],
+    "8.1 Conectar los seis juegos al registro": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905603
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795497713419
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795498206649
+      }
+    ],
+    "9.1 Documentar la interfaz y actualizar los requisitos del producto": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905624
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795498210940
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795498421836
+      }
+    ],
+    "10.1 Compilación, lint y revisión por código": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795494905651
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795498424293
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795498702097
+      }
+    ],
+    "1. Base de la sección Retos": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496523515
+      }
+    ],
+    "3. Juego del 15": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496523952
+      }
+    ],
+    "4. Buscaminas": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496524777
+      }
+    ],
+    "5. Tangram": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496525406
+      }
+    ],
+    "2. Ajedrez": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795496767177
+      }
+    ],
+    "7. Memorama": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795497691394
+      }
+    ],
+    "6. Tetris": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795497691440
+      }
+    ],
+    "11.1 Rotación de la I del Tetris al aparecer": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795497710025
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795497714140
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795498207607
+      }
+    ],
+    "11.2 Tamaño mínimo de casilla del Buscaminas": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795497710053
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795497714956
+      },
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795498208329
+      }
+    ],
+    "8. Integración": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795498206693
+      }
+    ],
+    "11. Ajustes de jugabilidad": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795498208356
+      }
+    ],
+    "9. Documentación": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795498421862
+      }
+    ],
+    "10. Verificación final": [
+      {
+        "executionId": "c2aad514-11c2-435f-b74d-dee1b5e2cc21",
+        "chatSessionId": "sess_28771fd7-6b5b-4553-aed9-7cac8d04574c",
+        "timestamp": 1795498702131
+      }
+    ]
+  }
+}
