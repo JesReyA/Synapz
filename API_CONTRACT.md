@@ -484,6 +484,43 @@ class FeynChatResponse(BaseModel):
 
 `mastered` pasa a `true` cuando `coverage ≥ 0.85` y `missing_concepts` está vacío.
 
+#### 2.5.1 Versión implementada hoy (MVP)
+
+El backend actual (`backend/app/routers/feyn.py`, `backend/app/schemas/feyn.py`) implementa una versión reducida de este endpoint. El frontend (`services/feynApi.ts`) usa esta forma hasta que se complete la versión de §2.5.
+
+```ts
+export interface FeynChatMvpRequest {
+  topic_title: string;
+  teacher_material: string; // texto del material del profesor para el tema
+  student_explanation: string; // lo que el alumno explicó
+}
+export interface FeynChatMvpResponse {
+  reply: string; // respuesta socrática de Feyn
+  mastery_score: string; // entero de 0 a 100 como texto, por ejemplo "72"
+  missing_concepts: string[]; // conceptos del profesor que faltó explicar
+}
+```
+
+```python
+class FeynChatRequest(BaseModel):
+    topic_title: str
+    teacher_material: str
+    student_explanation: str
+
+class FeynChatResponse(BaseModel):
+    reply: str
+    mastery_score: str
+    missing_concepts: list[str]
+```
+
+Diferencias con §2.5, a resolver antes de producción:
+
+- No exige `Authorization` ni valida el rol.
+- No hay sesión (`session_id`) ni historial: cada llamada evalúa solo `student_explanation`. El cliente envía la explicación acumulada del alumno para que `missing_concepts` refleje toda la conversación.
+- `teacher_material` lo envía el cliente. Un alumno podría alterarlo, y la Regla de Oro exige que el material salga del backend. En la versión final se envía `topic_id` y `classroom_id`, y el backend lee `syllabus_topics.material_text`.
+- La respuesta no trae `grounding`, `intent`, `coverage` ni `mastered`. El cliente toma `mastered` como `mastery_score ≥ 85` y `missing_concepts` vacío.
+- `mastery_score` viaja como texto. En la versión final será un número (`coverage` de 0 a 1).
+
 ### 2.6 `POST /api/math/mental-test` (rol: `student`)
 
 Dos usos con el mismo endpoint, según `action`.

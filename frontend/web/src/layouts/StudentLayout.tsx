@@ -7,6 +7,7 @@ import { MisClasesPage } from "../pages/MisClasesPage.tsx";
 import { ProgresoPage } from "../pages/ProgresoPage.tsx";
 import { RetosPage } from "../pages/RetosPage.tsx";
 import { StudentHome } from "../pages/StudentHome.tsx";
+import { listFeynTopics, withTeacherMaterial } from "../services/teacherMaterial.ts";
 import type { FeynTopicContext } from "../types/classes.ts";
 
 type View = "inicio" | "clases" | "aprender" | "retos" | "progreso";
@@ -36,9 +37,10 @@ export function StudentLayout({ name, dark, onToggleTheme, onSwitchRole, onSignO
   const [view, setView] = useState<View>("inicio");
   const [feynOpen, setFeynOpen] = useState(false);
   const [feynTopic, setFeynTopic] = useState<FeynTopicContext | null>(null);
+  const [feynCatalog] = useState(listFeynTopics);
 
   function explainToFeyn(context: FeynTopicContext) {
-    setFeynTopic(context);
+    setFeynTopic(withTeacherMaterial(context));
     setFeynOpen(true);
   }
 
@@ -72,7 +74,7 @@ export function StudentLayout({ name, dark, onToggleTheme, onSwitchRole, onSignO
           {view === "progreso" && <ProgresoPage dark={dark} onReinforce={() => setView("aprender")} />}
         </div>
       </main>
-      <FeynChatFab open={feynOpen} onOpenChange={setFeynOpen} topic={feynTopic} />
+      <FeynChatFab open={feynOpen} onOpenChange={setFeynOpen} topic={feynTopic} topics={feynCatalog} />
     </div>
   );
 }
