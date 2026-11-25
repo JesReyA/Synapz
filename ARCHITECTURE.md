@@ -1,4 +1,4 @@
-﻿# ARCHITECTURE.md — Synapz + Feyn
+# ARCHITECTURE.md — Synapz + Feyn
 
 Synapz es una plataforma educativa adaptativa. Feyn es su asistente de IA (Técnica Feynman y coach de lectura).
 Este documento fija la estructura del monorepo y las reglas de modularidad. Los requisitos están en `requirements.md` y los contratos de datos y API en `API_CONTRACT.md`.
@@ -60,7 +60,7 @@ Reglas:
 6. Iconos solo de `lucide-react`. Gráficas solo de `recharts`, dentro de `ResponsiveContainer` con un padre de altura explícita.
 7. Rutas con `react-router` cuando se añada la segunda pantalla. Rutas protegidas por rol (`teacher`/`student`).
 
-Variables de entorno del frontend: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_BASE_URL`. Nunca se expone la `service_role` key.
+Variables de entorno del frontend: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL`. Nunca se expone la `service_role` key.
 
 ## 3. Backend (`backend/`)
 

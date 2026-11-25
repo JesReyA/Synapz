@@ -38,7 +38,7 @@ function parseResponse(data: unknown): FeynChatResult {
 /** `POST /api/feyn/chat` (API_CONTRACT.md §2.5.1). */
 export async function sendExplanationToFeyn(request: FeynChatRequest, signal?: AbortSignal): Promise<FeynChatResult> {
   if (!API_URL) {
-    throw new FeynApiError("CONFIG", "Falta configurar VITE_API_BASE_URL para hablar con Feyn.");
+    throw new FeynApiError("CONFIG", "Falta configurar VITE_API_URL para hablar con Feyn.");
   }
 
   if (signal?.aborted) throw new FeynApiError("ABORTED", "Solicitud cancelada.");
