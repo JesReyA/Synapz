@@ -104,5 +104,8 @@ export interface ApiError {
 export interface FeynTopicContext {
   classroom_id: string;
   topic_id: string;
+  /** Se envía como 	opic_title. */
   title: string;
+  /** Texto del material del profesor. Se envía como 	eacher_material (API_CONTRACT.md §2.5.1). */
+  teacher_material?: string;
 }
