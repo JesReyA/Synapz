@@ -5,7 +5,7 @@ Cualquier cambio se hace primero aquí, luego en `backend/app/schemas/` y en `fr
 
 ## 0. Convenciones
 
-- Base URL: `VITE_API_BASE_URL` (por ejemplo `https://api.synapz.app`). Todas las rutas empiezan por `/api`.
+- Base URL: `VITE_API_URL` (por ejemplo `https://api.synapz.app`, sin `/api` ni barra final). Todas las rutas empiezan por `/api`.
 - Auth: `Authorization: Bearer <JWT de Supabase>` en todas las rutas. El rol sale del JWT (`teacher` | `student`).
 - JSON en `snake_case`. IDs `uuid` como `string`. Fechas ISO 8601 UTC como `string`.
 - Cuerpo `application/json`, salvo los endpoints `multipart/form-data` indicados.
