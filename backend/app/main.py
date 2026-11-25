@@ -28,3 +28,7 @@ app.include_router(feyn.router)
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "Synapz is running!"}
+
+@app.api_route("/health", methods=["GET", "HEAD"])
+def health_check():
+  return {"status": "ok"}
