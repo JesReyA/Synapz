@@ -1,5 +1,6 @@
 import { RefreshCw, Timer } from "lucide-react";
 import type { ReactNode } from "react";
+import { useGameSession } from "../../hooks/useGameSession.ts";
 import { formatTime } from "../../lib/sudoku.ts";
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from "../challenges/ChallengeCard.tsx";
 
@@ -44,16 +45,19 @@ export function GameShell({
   finished = false,
   children,
 }: GameShellProps) {
-  const hasHeader = elapsed !== undefined || (stats !== undefined && stats.length > 0);
+  const { hideTimers, noteRestart } = useGameSession();
+  // Con ansiedad alta el reloj se oculta; las estadísticas se quedan.
+  const shownElapsed = hideTimers ? undefined : elapsed;
+  const hasHeader = shownElapsed !== undefined || (stats !== undefined && stats.length > 0);
   return (
     <div className="flex min-w-0 flex-col gap-4">
       {hasHeader && (
         <div className="flex flex-wrap items-center gap-2">
-          {elapsed !== undefined && (
+          {shownElapsed !== undefined && (
             <span className={CHIP}>
               <Timer className="size-4 text-slate-500 dark:text-slate-400" strokeWidth={1.75} />
               <span role="timer" aria-label="Tiempo transcurrido">
-                {formatTime(elapsed)}
+                {formatTime(shownElapsed)}
               </span>
             </span>
           )}
@@ -73,7 +77,14 @@ export function GameShell({
         >
           {status}
         </p>
-        <button type="button" onClick={onReset} className={finished ? PRIMARY_BUTTON : SECONDARY_BUTTON}>
+        <button
+          type="button"
+          onClick={() => {
+            noteRestart();
+            onReset();
+          }}
+          className={finished ? PRIMARY_BUTTON : SECONDARY_BUTTON}
+        >
           <RefreshCw className="size-3.5" strokeWidth={2} />
           {resetLabel}
         </button>

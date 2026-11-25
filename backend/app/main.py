@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import feyn
+from app.routers import adaptive, feyn
 
 app = FastAPI(
     title="Synapz & Feyn API",
@@ -23,6 +23,7 @@ app.add_middleware(
 
 # Include la ruta de feyn
 app.include_router(feyn.router)
+app.include_router(adaptive.router)
 
 
 @app.get("/")

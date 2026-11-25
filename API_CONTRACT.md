@@ -215,6 +215,56 @@ Series de nivelación sin límite de tiempo. El backend las genera por alumno a 
 | `best_first_try_pct`         | numeric     | 0–100, mejor resultado de aciertos a la primera. Es el progreso de la tarjeta |
 | `attempts`                   | int         | default 0                                                                    |
 | `updated_at`                 | timestamptz |                                                                              |
+### `student_abilities`
+
+Habilidad θ del alumno por dominio PISA. La puntuación y el nivel PISA se derivan de `theta` (§2.17), no se guardan. Escribe solo el backend.
+
+| Columna           | Tipo         | Notas                                                    |
+| ----------------- | ------------ | -------------------------------------------------------- |
+| `student_id`      | uuid FK PK   | `profiles.id`                                            |
+| `domain_id`       | text PK      | `MATH` \| `READ` \| `SCIE` \| `COMP`                      |
+| `theta`           | numeric(6,4) | Logits, entre -3.5 y 3.5. Por defecto 0                  |
+| `items_completed` | int          | Intentos válidos (sin adivinación rápida). Frena el paso |
+| `updated_at`      | timestamptz  |                                                          |
+
+### `student_socioemotional`
+
+Índices WLE (media 0, desviación 1; acotados a ±3) y banderas de adaptación de la interfaz. Una fila por alumno. Escribe solo el backend.
+
+| Columna                   | Tipo         | Notas                                         |
+| ------------------------- | ------------ | --------------------------------------------- |
+| `student_id`              | uuid PK FK   | `profiles.id`                                 |
+| `anxiety_index`           | numeric(5,3) | `ANXMAT`                                      |
+| `self_efficacy_index`     | numeric(5,3) | `SELFEFF`                                     |
+| `perseverance_index`      | numeric(5,3) | `PERSEV`                                      |
+| `metacognition_index`     | numeric(5,3) | `METAGOD`                                     |
+| `hide_timers`             | boolean      | `anxiety_index >= 0.75`                       |
+| `auto_enable_scaffolding` | boolean      | `self_efficacy_index <= -0.60`                |
+| `updated_at`              | timestamptz  |                                               |
+
+### `game_attempts`
+
+Una fila por partida de Retos que mide al alumno. Incluye las partidas descartadas por adivinación rápida.
+
+| Columna                    | Tipo         | Notas                                                                              |
+| -------------------------- | ------------ | ---------------------------------------------------------------------------------- |
+| `id`                       | uuid PK      |                                                                                    |
+| `student_id`               | uuid FK      | `profiles.id`                                                                      |
+| `game_id`                  | text         | `batalla` \| `calculo` \| `sudoku` \| `quince` \| `buscaminas` \| `tangram` \| `tetris` \| `memorama` |
+| `domain_id`, `process_id`  | text         | Dominio y proceso PISA del juego (mapa en `docs/ADAPTIVE_ENGINE.md`)               |
+| `level`                    | text null    | Nivel jugado (`facil` \| `medio` \| `dificil`) si el juego los tiene                |
+| `completed`                | boolean      | Ganó o terminó la partida                                                          |
+| `beta`                     | numeric(6,4) | Dificultad del intento en logits                                                   |
+| `score_ratio`              | numeric(5,4) | 0–1, calculado por el servidor                                                     |
+| `is_rapid_guess`           | boolean      | Si es `true`, θ no cambió                                                          |
+| `theta_before`, `theta_after` | numeric(6,4) |                                                                                 |
+| `general_metrics`          | jsonb        | `GeneralMetrics` (§2.17)                                                           |
+| `game_metrics`             | jsonb        | Métricas propias del juego                                                         |
+| `events`                   | jsonb        | `TelemetryEvent[]`                                                                 |
+| `created_at`               | timestamptz  | Índice `(student_id, created_at desc)`                                             |
+
+RLS de las tres: el alumno solo lee sus filas (`student_id = auth.uid()`). No hay políticas de escritura: escribe el backend con `service_role`. Migración: `supabase/migrations/0001_adaptive_engine.sql`.
+
 ---
 
 ## 2. Endpoints
@@ -1180,6 +1230,100 @@ class GrantBonusPointsResponse(BaseModel):
 
 Inserta en `bonus_point_events` y suma a `classroom_members.bonus_points`. Todos los clientes del aula ven el cambio al volver a pedir §2.11 (Realtime sobre `classroom_members`). Errores: `FORBIDDEN` si el aula no es del docente, `NOT_FOUND` si el alumno no es miembro y `VALIDATION_ERROR`.
 
+### 2.17 Motor adaptativo PISA (rol: `student`)
+
+Mide cada partida de Retos, actualiza la habilidad θ por dominio y devuelve la dificultad y las banderas de interfaz. El `student_id` sale del JWT: nunca viaja en el cuerpo. El ajedrez no se mide (dos personas en el mismo dispositivo) y devuelve `VALIDATION_ERROR`. Los errores usan `detail: { code, message }` de `ApiError`.
+
+```ts
+export type GameId = "batalla" | "calculo" | "sudoku" | "ajedrez" | "quince" | "buscaminas" | "tangram" | "tetris" | "memorama";
+export type DomainId = "MATH" | "READ" | "SCIE" | "COMP";
+export type DifficultyLevel = "facil" | "medio" | "dificil";
+
+export interface UxAdaptationFlags {
+  hide_timers: boolean;             // ansiedad >= 0.75
+  auto_enable_scaffolding: boolean; // autoeficacia <= -0.60
+}
+export interface DomainAbility {
+  domain_id: DomainId;
+  theta: number;                    // -3.5..3.5
+  pisa_scaled_score: number;        // 500 + theta * 100
+  pisa_level: number;               // 1..6
+  pisa_label: string;               // "Nivel 3", "Nivel 1b/1c", ...
+  items_completed: number;
+}
+```
+
+**`POST /api/adaptive/game-attempts`**
+
+```ts
+export interface GameAttemptRequest {
+  game_id: GameId;
+  level: DifficultyLevel | null;    // nivel jugado; null si el juego no tiene niveles
+  completed: boolean;
+  general: {
+    first_action_latency_ms: number | null;
+    total_duration_ms: number;      // 0..86 400 000
+    idle_time_ms: number;
+    tab_blur_count: number;
+    hints_requested_count: number;
+    restart_click_count: number;
+  };
+  metrics: Record<string, number>;  // propias del juego, ver tabla
+  events: { event_type: "WINDOW_BLUR" | "WINDOW_FOCUS"; elapsed_ms: number }[]; // máx. 200
+}
+export interface GameAttemptResponse {
+  attempt_id: string;
+  is_rapid_guess: boolean;
+  score_ratio: number;              // 0..1
+  beta: number;
+  theta_before: number;
+  ability: DomainAbility;           // ya con el θ nuevo
+  ux_adaptation: UxAdaptationFlags;
+}
+```
+
+Métricas obligatorias por juego (`metrics`). Cualquier otra clave numérica se guarda sin validar.
+
+| `game_id`    | Obligatorias                                   | `score_ratio`                                                  |
+| ------------ | ---------------------------------------------- | -------------------------------------------------------------- |
+| `sudoku`     | `error_count`                                  | Completado: 1 − min(0.5, 0.1 · errores). Si no, 0              |
+| `memorama`   | `attempts`, `pairs`                            | Completado: pares / intentos. Si no, 0                         |
+| `buscaminas` | —                                              | 1 si ganó, 0 si perdió                                         |
+| `quince`     | `moves`                                        | 1 si lo resolvió                                               |
+| `tangram`    | —                                              | 1 si completó la figura                                        |
+| `tetris`     | `lines`                                        | min(1, líneas / 20)                                            |
+| `calculo`    | `correct`, `total`, `avg_response_ms`, `max_level` | aciertos / total                                           |
+| `batalla`    | `correct`, `total`, `avg_response_ms`          | aciertos / total                                               |
+
+Errores: `VALIDATION_ERROR` (422) si faltan métricas, son negativas o el juego no se mide; `UNAUTHORIZED` (401); `FORBIDDEN` (403) si el rol no es `student`.
+
+**`GET /api/adaptive/difficulty/{game_id}`**
+
+```ts
+export interface DifficultyRecommendation {
+  game_id: GameId;
+  domain_id: DomainId;
+  theta: number;
+  target_beta: number;              // theta + 0.25 (Zona de Desarrollo Próximo)
+  recommended_level: DifficultyLevel | null; // solo sudoku, memorama y buscaminas
+  ux_adaptation: UxAdaptationFlags;
+}
+```
+
+**`GET /api/adaptive/profile`**
+
+```ts
+export interface AdaptiveProfileResponse {
+  student_id: string;
+  abilities: DomainAbility[];       // siempre los 4 dominios; sin datos, theta 0
+  indices: { anxiety: number; self_efficacy: number; perseverance: number; metacognition: number };
+  ux_adaptation: UxAdaptationFlags;
+  reference_level: ReferenceLevel | null; // §2.10; null sin intentos válidos
+}
+```
+
+Reglas del servidor (detalle en `docs/ADAPTIVE_ENGINE.md`): adivinación rápida congela θ, `reference_level` es el nivel PISA del θ medio de los dominios con datos y tiene la misma forma que en `GET /api/progress/me`.
+
 ---
 
 ## 3. Acceso directo desde el frontend a Supabase (sin pasar por FastAPI)
@@ -1204,3 +1348,4 @@ El anti-trampa se envía con la entrega del diagnóstico. Endpoint pendiente de 
 4. Migraciones para `classrooms.subject_area`, `reading_sessions.comprehension_score`, `topic_score_events` y `activity_days` (§1), necesarias para `GET /api/progress/me` (§2.10).
 5. Migración para `remedial_sets` (§1), necesaria para `GET /api/learning/home` y los endpoints de nivelación (§2.13 y §2.14).
 6. Migración para `bonus_point_events` (§1), necesaria para `POST /api/classrooms/{id}/bonus-points` (§2.16).
+7. Migración `supabase/migrations/0001_adaptive_engine.sql` (`student_abilities`, `student_socioemotional`, `game_attempts`), necesaria para §2.17. Falta además que `GET /api/progress/me` (§2.10) tome `reference_level` de `GET /api/adaptive/profile` cuando exista su router.

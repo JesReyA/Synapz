@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   applyTap,
   completedDigits as computeCompletedDigits,
@@ -6,10 +6,16 @@ import {
   generatePuzzle,
 } from "../lib/sudoku.ts";
 import type { SudokuDifficulty, SudokuDigit, SudokuPuzzle } from "../types/challenges.ts";
+import { useGameSession } from "./useGameSession.ts";
+import { useReportOutcome } from "./useReportOutcome.ts";
 
 export function useSudoku() {
-  const [difficulty, setDifficulty] = useState<SudokuDifficulty>("facil");
-  const [puzzle, setPuzzle] = useState<SudokuPuzzle>(() => generatePuzzle("facil"));
+  const { recommendedLevel, noteRestart } = useGameSession();
+  const initialLevel: SudokuDifficulty = recommendedLevel ?? "facil";
+  const [difficulty, setDifficulty] = useState<SudokuDifficulty>(initialLevel);
+  const [puzzle, setPuzzle] = useState<SudokuPuzzle>(() => generatePuzzle(initialLevel));
+  /** Jugadas que generaron un conflicto nuevo en el tablero. */
+  const errorsRef = useRef(0);
   const [values, setValues] = useState<readonly number[]>(puzzle.cells);
   const [activeDigit, setActiveDigit] = useState<SudokuDigit | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -27,7 +33,13 @@ export function useSudoku() {
     return () => window.clearInterval(id);
   }, [solved, puzzle.id]);
 
+  useReportOutcome(solved, () => ({
+    level: difficulty,
+    completed: true,
+    metrics: { error_count: errorsRef.current, elapsed_s: elapsed },
+  }));
   function load(nextDifficulty: SudokuDifficulty) {
+    errorsRef.current = 0;
     const next = generatePuzzle(nextDifficulty);
     setDifficulty(nextDifficulty);
     setPuzzle(next);
@@ -42,7 +54,9 @@ export function useSudoku() {
 
   function tapCell(index: number) {
     if (solved) return;
-    setValues((prev) => applyTap(prev, puzzle.cells, index, activeDigit));
+    const next = applyTap(values, puzzle.cells, index, activeDigit);
+    if (findConflicts(next).size > conflicts.size) errorsRef.current += 1;
+    setValues(next);
   }
 
   return {
@@ -56,7 +70,10 @@ export function useSudoku() {
     completedDigits,
     filled: values.filter((v) => v !== 0).length,
     changeDifficulty: (d: SudokuDifficulty) => load(d),
-    newGame: () => load(difficulty),
+    newGame: () => {
+      noteRestart();
+      load(difficulty);
+    },
     toggleDigit,
     tapCell,
   };

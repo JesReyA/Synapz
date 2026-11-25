@@ -1,7 +1,9 @@
 import { useCallback, useState } from "react";
 import { createMineState, reveal, toggleFlag } from "../lib/games/minesweeper.ts";
 import type { MineDifficulty, MineState } from "../types/minesweeper.ts";
+import { useGameSession } from "./useGameSession.ts";
 import { useGameTimer } from "./useGameTimer.ts";
+import { useReportOutcome } from "./useReportOutcome.ts";
 
 export interface UseMinesweeper {
   difficulty: MineDifficulty;
@@ -22,11 +24,19 @@ export interface UseMinesweeper {
 
 /** Estado y acciones del Buscaminas. El cronómetro corre solo mientras `status === "playing"`. */
 export function useMinesweeper(): UseMinesweeper {
-  const [difficulty, setDifficulty] = useState<MineDifficulty>("facil");
-  const [state, setState] = useState<MineState>(() => createMineState("facil"));
+  const { recommendedLevel } = useGameSession();
+  const initialLevel: MineDifficulty = recommendedLevel ?? "facil";
+  const [difficulty, setDifficulty] = useState<MineDifficulty>(initialLevel);
+  const [state, setState] = useState<MineState>(() => createMineState(initialLevel));
   const [flagMode, setFlagMode] = useState(false);
   const timer = useGameTimer(state.status === "playing");
   const resetTimer = timer.reset;
+  const finished = state.status === "won" || state.status === "lost";
+  useReportOutcome(finished, () => ({
+    level: difficulty,
+    completed: state.status === "won",
+    metrics: { flags_placed: state.flags, elapsed_s: timer.elapsed },
+  }));
 
   const open = useCallback(
     (index: number) => {
@@ -63,7 +73,7 @@ export function useMinesweeper(): UseMinesweeper {
     flagMode,
     elapsed: timer.elapsed,
     minesLeft: state.mines - state.flags,
-    finished: state.status === "won" || state.status === "lost",
+    finished,
     open,
     flag,
     toggleFlagMode,

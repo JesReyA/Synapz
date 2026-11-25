@@ -411,7 +411,7 @@ grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] md:gap-5
 - Debajo de `lg` hay una sola columna: primero el contenido principal y debajo la columna derecha, con el mismo orden (ranking y luego racha).
 - `min-w-0` en ambas columnas evita que un tablero ancho desborde el grid. Cada juego limita su propio tablero con un ancho máximo y lo centra (`mx-auto w-full max-w-[…]`).
 - `openGame` no se persiste: al cambiar de pestaña y volver, Retos empieza otra vez en la cuadrícula.
-- `GAME_COMPONENTS` (`gameRegistry.tsx`) es un `Record<GameId, ComponentType>`: TypeScript marca un error si falta algún juego. Solo se monta el juego abierto, así que los temporizadores y los listeners de los demás no existen.
+- `GAME_COMPONENTS` (`gameRegistry.ts`) es un `Record<GameId, ComponentType>`: TypeScript marca un error si falta algún juego. Solo se monta el juego abierto, así que los temporizadores y los listeners de los demás no existen.
 
 ### 7.2 Cuadrícula Masonry (`GamesMasonry` y `GameTile`)
 

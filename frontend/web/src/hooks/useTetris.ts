@@ -10,6 +10,7 @@ import {
   togglePause as togglePauseState,
 } from "../lib/games/tetris.ts";
 import type { TetrisState } from "../types/tetris.ts";
+import { useReportOutcome } from "./useReportOutcome.ts";
 
 export interface TetrisApi {
   state: TetrisState;
@@ -34,6 +35,11 @@ export function useTetris(): TetrisApi {
   const [session, setSession] = useState(0);
 
   const { status, level } = state;
+  useReportOutcome(status === "over", () => ({
+    level: null,
+    completed: true,
+    metrics: { lines: state.lines, score: state.score, level: state.level },
+  }));
   useEffect(() => {
     if (status !== "playing") return undefined;
     const id = setInterval(() => {

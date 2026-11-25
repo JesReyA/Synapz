@@ -8,6 +8,7 @@ import {
 } from "../lib/mentalMath.ts";
 import { newId } from "../lib/random.ts";
 import type { LocalMentalQuestion, MentalAnswerRecord, MentalTestResult } from "../types/challenges.ts";
+import { useReportOutcome } from "./useReportOutcome.ts";
 
 export type MentalPhase = "intro" | "question" | "feedback" | "result";
 
@@ -34,6 +35,16 @@ export function useMentalTrainer() {
   const questionStartRef = useRef(0);
 
   const level = LEVELS[levelIdx] ?? LEVELS[0];
+  useReportOutcome(phase === "result", () => ({
+    level: null,
+    completed: true,
+    metrics: {
+      correct: records.filter((r) => r.correct).length,
+      total: records.length,
+      avg_response_ms: result?.avg_response_ms ?? 0,
+      max_level: result?.max_level_reached ?? 1,
+    },
+  }));
 
   const beginQuestion = useCallback((levelIndex: number) => {
     const cfg = LEVELS[levelIndex] ?? LEVELS[0];

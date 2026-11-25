@@ -1,5 +1,6 @@
 import { AlertCircle, CheckCircle2, Grid3x3, RefreshCw, Timer } from "lucide-react";
 import type { KeyboardEvent } from "react";
+import { useGameSession } from "../../hooks/useGameSession.ts";
 import { useSudoku } from "../../hooks/useSudoku.ts";
 import { DIFFICULTIES, SIZE, formatTime } from "../../lib/sudoku.ts";
 import type { SudokuDigit } from "../../types/challenges.ts";
@@ -51,6 +52,7 @@ function Segmented<T extends string | number>({
 
 export function LogicSudokuCard() {
   const s = useSudoku();
+  const { hideTimers } = useGameSession();
 
   function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
@@ -69,12 +71,14 @@ export function LogicSudokuCard() {
       icon={Grid3x3}
       tone="emerald"
       action={
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-900 tabular-nums dark:bg-[#1B2438] dark:text-white">
-          <Timer className="size-4 text-slate-500 dark:text-slate-400" strokeWidth={1.75} />
-          <span role="timer" aria-label="Tiempo transcurrido">
-            {formatTime(s.elapsed)}
+        hideTimers ? undefined : (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-900 tabular-nums dark:bg-[#1B2438] dark:text-white">
+            <Timer className="size-4 text-slate-500 dark:text-slate-400" strokeWidth={1.75} />
+            <span role="timer" aria-label="Tiempo transcurrido">
+              {formatTime(s.elapsed)}
+            </span>
           </span>
-        </span>
+        )
       }
     >
       {/* Atajos 1-9 para elegir número; las flechas, Enter y Espacio los maneja el tablero. */}
