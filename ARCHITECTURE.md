@@ -18,7 +18,8 @@ Synapz/
 │   ├── app/
 │   └── tests/                # pytest (motor adaptativo)
 ├── supabase/
-│   └── migrations/           # SQL versionado
+│   ├── migrations/           # SQL versionado (0001 base, 0002 motor adaptativo)
+│   └── local/                # auth_stub.sql: solo para Postgres local
 ├── docs/                     # ADAPTIVE_ENGINE.md
 ├── ARCHITECTURE.md
 ├── requirements.md
@@ -113,7 +114,7 @@ Reglas:
 1. **Row Level Security activado en todas las tablas.** Un alumno solo lee y escribe lo suyo. Un docente solo accede a las aulas que creó. Los rankings de un aula los leen sus miembros.
 2. El frontend usa la `anon` key y el JWT del usuario. El backend usa `service_role` y siempre verifica la pertenencia al aula antes de operar.
 3. Los archivos se suben por URLs firmadas o a través del backend, nunca con buckets públicos.
-4. Cambios de esquema como migraciones SQL versionadas en `supabase/migrations/`. Existe `0001_adaptive_engine.sql`.
+4. Cambios de esquema como migraciones SQL versionadas en `supabase/migrations/`. Existen `0001_core_schema.sql` (perfiles, aulas, temas, datos del alumno, RLS, RPC, Realtime y Storage) y `0002_adaptive_engine.sql` (motor adaptativo). `supabase/local/auth_stub.sql` simula Supabase para probarlas en un Postgres local.
 
 ## 5. Regla de Oro de IA
 

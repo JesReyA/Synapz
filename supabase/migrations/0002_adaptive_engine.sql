@@ -1,5 +1,5 @@
 -- Motor adaptativo PISA: habilidad por dominio, índices socioemocionales e intentos de juego.
--- Requiere la tabla `public.profiles` (API_CONTRACT.md §1). Espejo de API_CONTRACT.md §1 y §2.17.
+-- Requiere `public.profiles`, que crea 0001_core_schema.sql. Espejo de API_CONTRACT.md §1 y §2.17.
 -- El backend escribe con la clave de servicio (omite RLS). El alumno solo lee lo suyo.
 
 create table public.student_abilities (
@@ -56,3 +56,9 @@ create policy "student reads own socioemotional profile" on public.student_socio
 
 create policy "student reads own game attempts" on public.game_attempts
   for select using (student_id = auth.uid());
+
+-- Privilegios: sin acceso anónimo; el alumno solo lee. Escribe el backend (service_role).
+revoke all on public.student_abilities, public.student_socioemotional, public.game_attempts
+  from anon, authenticated;
+grant select on public.student_abilities, public.student_socioemotional, public.game_attempts
+  to authenticated;

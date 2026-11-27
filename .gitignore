@@ -19,10 +19,7 @@ __pycache__/
 # Bases de datos locales (por si usas SQLite en el hackathon)
 *.db
 *.sqlite
-*.sqlite3
-
-# Caché de pruebas y linters
-.pytest_cache/
+*.sqlite3_cache/
 .coverage
 htmlcov/
 .mypy_cache/
@@ -30,6 +27,9 @@ htmlcov/
 
 # Editores (VS Code / PyCharm) y Sistema Operativo (Windows / Mac)
 .vscode/
+
+# Caché de pruebas y linters
+.pytest
 .idea/
 .DS_Store
 Thumbs.db

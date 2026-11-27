@@ -63,7 +63,14 @@ class Grounding(BaseModel):
 
 ## 1. Tablas de PostgreSQL (Supabase)
 
-RLS activado en todas. `auth.users` lo gestiona Supabase.
+RLS activado en todas. `auth.users` lo gestiona Supabase Auth: no se crea en las migraciones, solo se referencia. Esquema completo en `supabase/migrations/0001_core_schema.sql` (todo lo de esta sección salvo las tres últimas tablas) y `0002_adaptive_engine.sql`.
+
+Reglas de acceso del cliente (`authenticated`). El backend usa `service_role` y omite RLS:
+
+- Todo usuario nuevo nace `student`. El rol no se toma de lo que envía el cliente. Un docente se asciende con `update profiles set role = 'teacher'` desde el panel de Supabase o con `service_role` (ver `supabase/README.md`). El rol se copia a `app_metadata.role` del JWT.
+- El cliente solo escribe: `profiles` (`full_name`, `interests`, `onboarding_completed`), `classrooms` y `syllabus_topics` (solo el docente dueño; sin `invite_code` ni `material_text`). Todo lo demás es de solo lectura para el cliente.
+- `syllabus_topics.material_text` no es legible por el cliente. No usar `select *` sobre esa tabla.
+- `anon` no accede a nada.
 
 ### `profiles`
 
@@ -215,6 +222,18 @@ Series de nivelación sin límite de tiempo. El backend las genera por alumno a 
 | `best_first_try_pct`         | numeric     | 0–100, mejor resultado de aciertos a la primera. Es el progreso de la tarjeta |
 | `attempts`                   | int         | default 0                                                                    |
 | `updated_at`                 | timestamptz |                                                                              |
+### `strategies`
+
+Estrategias que el docente aplicó, para los puntos de inflexión del reporte (§2.8). Escribe el backend.
+
+| Columna        | Tipo        | Notas                                       |
+| -------------- | ----------- | ------------------------------------------- |
+| `id`           | uuid PK     |                                             |
+| `classroom_id` | uuid FK     |                                             |
+| `topic_id`     | uuid FK null | `syllabus_topics.id`. `on delete set null` |
+| `description`  | text        |                                             |
+| `applied_at`   | timestamptz | Por defecto, ahora                          |
+
 ### `student_abilities`
 
 Habilidad θ del alumno por dominio PISA. La puntuación y el nivel PISA se derivan de `theta` (§2.17), no se guardan. Escribe solo el backend.
@@ -263,7 +282,7 @@ Una fila por partida de Retos que mide al alumno. Incluye las partidas descartad
 | `events`                   | jsonb        | `TelemetryEvent[]`                                                                 |
 | `created_at`               | timestamptz  | Índice `(student_id, created_at desc)`                                             |
 
-RLS de las tres: el alumno solo lee sus filas (`student_id = auth.uid()`). No hay políticas de escritura: escribe el backend con `service_role`. Migración: `supabase/migrations/0001_adaptive_engine.sql`.
+RLS de las tres: el alumno solo lee sus filas (`student_id = auth.uid()`). No hay políticas de escritura: escribe el backend con `service_role`. Migración: `supabase/migrations/0002_adaptive_engine.sql`.
 
 ---
 
@@ -1332,9 +1351,9 @@ Reglas del servidor (detalle en `docs/ADAPTIVE_ENGINE.md`): adivinación rápida
 | ------------------------------ | ------------------------------- | --------------------------------------------------------------------- |
 | Registro e inicio de sesión    | `auth`                          | El rol (`teacher` \| `student`) se lee de `profiles.role` tras iniciar sesión |
 | Leer/editar perfil e intereses | `profiles`                      | RLS: solo el propio usuario                                           |
-| Crear aula                     | `classrooms`                    | RLS: solo `teacher` dueño. Un trigger SQL genera `invite_code` único de 6 caracteres |
-| Regenerar código               | RPC `regenerate_invite_code(classroom_id uuid)` | Función SQL `security definer`; el código anterior deja de funcionar |
-| Unirse con código              | RPC `join_classroom(code text)` | Función SQL `security definer`                                        |
+| Crear aula                     | `classrooms`                    | RLS: solo `teacher` dueño. Un trigger SQL genera `invite_code` único de 6 caracteres (A-Z y 2-9, sin I, O, 0, 1) |
+| Regenerar código               | RPC `regenerate_invite_code(classroom_id uuid)` | Función SQL `security definer`. Devuelve el código nuevo; el anterior deja de funcionar. Error `42501` si el aula no es del docente |
+| Unirse con código              | RPC `join_classroom(code text)` | Función SQL `security definer`. Solo alumnos; ignora mayúsculas y espacios. Devuelve el `classroom_id`. Errores: `42501` (no es alumno) y `P0002` (código inexistente). Si ya es miembro, no hace nada |
 | CRUD de temas y calendario     | `syllabus_topics`               | RLS: solo `teacher` dueño. `material_text` solo lo escribe el backend |
 | Ranking en vivo                | `math_game_scores`              | Suscripción Realtime `postgres_changes` con filtro por aula. Estado inicial: §2.11 |
 
@@ -1343,9 +1362,8 @@ El anti-trampa se envía con la entrega del diagnóstico. Endpoint pendiente de 
 ## 4. Pendientes del contrato
 
 1. Endpoints de diagnóstico de conocimientos previos (generar y entregar) y de verificación del modo cloze.
-2. Tabla `strategies` y migraciones SQL en `supabase/migrations/`.
-3. Límite de uso (rate limit) por usuario para los endpoints con Gemini.
-4. Migraciones para `classrooms.subject_area`, `reading_sessions.comprehension_score`, `topic_score_events` y `activity_days` (§1), necesarias para `GET /api/progress/me` (§2.10).
-5. Migración para `remedial_sets` (§1), necesaria para `GET /api/learning/home` y los endpoints de nivelación (§2.13 y §2.14).
-6. Migración para `bonus_point_events` (§1), necesaria para `POST /api/classrooms/{id}/bonus-points` (§2.16).
-7. Migración `supabase/migrations/0001_adaptive_engine.sql` (`student_abilities`, `student_socioemotional`, `game_attempts`), necesaria para §2.17. Falta además que `GET /api/progress/me` (§2.10) tome `reference_level` de `GET /api/adaptive/profile` cuando exista su router.
+2. Límite de uso (rate limit) por usuario para los endpoints con Gemini y para `join_classroom` (hoy un alumno puede probar códigos sin límite).
+3. `GET /api/progress/me` (§2.10) debe tomar `reference_level` de `GET /api/adaptive/profile` cuando exista su router.
+4. Cliente de autenticación real en el frontend (`@supabase/supabase-js`): registro, inicio de sesión y envío del JWT al backend.
+
+Resueltos: todas las tablas de §1 tienen migración en `supabase/migrations/` (`0001_core_schema.sql` y `0002_adaptive_engine.sql`), incluida `strategies`.
