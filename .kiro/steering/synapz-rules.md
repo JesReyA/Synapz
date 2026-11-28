@@ -8,4 +8,4 @@
 - **Regla de Oro de IA:** Feyn nunca inventa el contenido del curso. Todo se ancla al material del profesor y las respuestas incluyen `grounding`.
 - **Requisitos:** consultar `requirements.md`. No construir lo marcado como FASE 2 sin que el usuario lo pida.
 - **Backend:** routers delgados, lógica en `services/`, modelos Pydantic v2 en `schemas/`, secretos solo en variables de entorno.
-- **Seguridad:** nunca exponer `service_role` ni `GEMINI_API_KEY` en el frontend. RLS activo en todas las tablas.
+- **Seguridad:** nunca exponer `DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` ni `GEMINI_API_KEY` en el frontend. Todo acceso a PostgreSQL (Foundathyon) pasa por el backend, que valida el token de sesión de Foundathyon, el rol y la pertenencia al aula. Supabase solo se usa para Storage y solo desde el backend.

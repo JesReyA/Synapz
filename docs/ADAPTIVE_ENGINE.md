@@ -90,7 +90,7 @@ Los tres documentos PISA no coinciden entre sí. Se resolvió así:
 2. **Rango de θ:** ±3.5.
 3. **Andamiaje:** solo por autoeficacia (steering). La ansiedad solo oculta relojes.
 4. **Adivinación rápida:** se aplican las dos reglas, según el tipo de juego (§3.2).
-5. **Errores de los fragmentos de código fuente:** `scalar_one()` fallaba con un alumno nuevo (aquí se usan valores por defecto); el `attempt_id` en claro permitía enviar intentos ajenos (aquí el alumno sale del JWT y cada intento nace en el servidor).
+5. **Errores de los fragmentos de código fuente:** `scalar_one()` fallaba con un alumno nuevo (aquí se usan valores por defecto); el `attempt_id` en claro permitía enviar intentos ajenos (aquí el alumno sale del token de sesión de Foundathyon y cada intento nace en el servidor).
 
 ## 6. Fuera de alcance (a propósito)
 
@@ -99,8 +99,8 @@ Los tres documentos PISA no coinciden entre sí. Se resolvió así:
 - **Ajedrez:** no se mide.
 - **Partidas abandonadas:** no se envía nada si el alumno sale a mitad de una partida.
 - **Carreras de escritura:** θ se lee y se escribe sin transacción. Es aceptable mientras un alumno juega una partida a la vez.
-- **Lectura por el docente:** las tablas solo tienen política de lectura para el propio alumno.
-- **Cliente HTTP real:** `services/mockAdaptive.ts` es un mock con la firma definitiva. No hay token de Supabase en el frontend todavía (`services/auth.ts` es una simulación), así que el reemplazo llega junto con el login real.
+- **Lectura por el docente:** el backend solo entrega estas tablas al propio alumno; el docente no tiene lectura.
+- **Cliente HTTP real:** `services/mockAdaptive.ts` es un mock con la firma definitiva. No hay token de sesión de Foundathyon en el frontend todavía (`services/auth.ts` es una simulación), así que el reemplazo llega junto con el login real.
 
 ## 7. Añadir un juego o una métrica
 
@@ -117,4 +117,4 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-Las pruebas cubren las funciones puras, el servicio (con un repositorio en memoria) y el router (JWT y errores). No necesitan Supabase.
+Las pruebas cubren las funciones puras, el servicio (con un repositorio en memoria) y el router (JWT y errores). No necesitan base de datos.

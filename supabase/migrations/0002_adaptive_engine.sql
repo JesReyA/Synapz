@@ -1,13 +1,13 @@
--- Motor adaptativo PISA: habilidad por dominio, índices socioemocionales e intentos de juego.
--- Requiere `public.profiles`, que crea 0001_core_schema.sql. Espejo de API_CONTRACT.md §1 y §2.17.
--- El backend escribe con la clave de servicio (omite RLS). El alumno solo lee lo suyo.
+-- ============================================================================
+-- Synapz: Motor adaptativo PISA adaptado para PostgreSQL en Foundathyon
+-- ============================================================================
 
 create table public.student_abilities (
-  student_id       uuid        not null references public.profiles (id) on delete cascade,
-  domain_id        text        not null check (domain_id in ('MATH', 'READ', 'SCIE', 'COMP')),
+  student_id       uuid         not null references public.profiles (id) on delete cascade,
+  domain_id        text         not null check (domain_id in ('MATH', 'READ', 'SCIE', 'COMP')),
   theta            numeric(6,4) not null default 0 check (theta between -3.5 and 3.5),
-  items_completed  integer     not null default 0 check (items_completed >= 0),
-  updated_at       timestamptz not null default now(),
+  items_completed  integer      not null default 0 check (items_completed >= 0),
+  updated_at       timestamptz  not null default now(),
   primary key (student_id, domain_id)
 );
 
@@ -44,21 +44,9 @@ create table public.game_attempts (
 
 create index game_attempts_student_recent_idx on public.game_attempts (student_id, created_at desc);
 
-alter table public.student_abilities     enable row level security;
-alter table public.student_socioemotional enable row level security;
-alter table public.game_attempts         enable row level security;
+-- Triggers para mantener actualizado `updated_at` (usa la función creada en el esquema base)
+create trigger student_abilities_touch before update on public.student_abilities
+  for each row execute function public.touch_updated_at();
 
-create policy "student reads own abilities" on public.student_abilities
-  for select using (student_id = auth.uid());
-
-create policy "student reads own socioemotional profile" on public.student_socioemotional
-  for select using (student_id = auth.uid());
-
-create policy "student reads own game attempts" on public.game_attempts
-  for select using (student_id = auth.uid());
-
--- Privilegios: sin acceso anónimo; el alumno solo lee. Escribe el backend (service_role).
-revoke all on public.student_abilities, public.student_socioemotional, public.game_attempts
-  from anon, authenticated;
-grant select on public.student_abilities, public.student_socioemotional, public.game_attempts
-  to authenticated;
+create trigger student_socioemotional_touch before update on public.student_socioemotional
+  for each row execute function public.touch_updated_at();

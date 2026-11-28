@@ -1,11 +1,22 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.db import close_pool
 from app.routers import adaptive, feyn
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    yield
+    close_pool()  # cierra el pool de PostgreSQL al apagar
+
 
 app = FastAPI(
     title="Synapz & Feyn API",
     description="Backend adaptativo impulsado por Feyn AI",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Configuración de CORS para permitir solicitudes desde el frontend

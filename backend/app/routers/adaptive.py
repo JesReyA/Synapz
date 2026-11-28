@@ -2,8 +2,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.core.db import get_pool
 from app.core.security import CurrentUser, get_current_student
-from app.core.supabase_client import get_supabase_client
 from app.schemas.adaptive import (
     AdaptiveProfileResponse,
     DifficultyRecommendation,
@@ -12,13 +12,13 @@ from app.schemas.adaptive import (
     GameId,
 )
 from app.services import adaptive_service
-from app.services.adaptive_repository import AdaptiveRepository, SupabaseAdaptiveRepository
+from app.services.adaptive_repository import AdaptiveRepository, PostgresAdaptiveRepository
 
 router = APIRouter(prefix="/api/adaptive", tags=["Adaptive Engine"])
 
 
 def get_adaptive_repository() -> AdaptiveRepository:
-    return SupabaseAdaptiveRepository(get_supabase_client())
+    return PostgresAdaptiveRepository(get_pool())
 
 
 Student = Annotated[CurrentUser, Depends(get_current_student)]

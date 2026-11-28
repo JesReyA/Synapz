@@ -1,12 +1,14 @@
 # API_CONTRACT.md — Synapz + Feyn
 
-Contrato entre `frontend/web` (TypeScript) y `backend` (FastAPI + Pydantic v2) y esquema de datos en Supabase PostgreSQL.
+Contrato entre `frontend/web` (TypeScript) y `backend` (FastAPI + Pydantic v2) y esquema de datos en PostgreSQL de Foundathyon. Los archivos binarios (material del docente y audios) viven en Supabase Storage y solo los toca el backend.
 Cualquier cambio se hace primero aquí, luego en `backend/app/schemas/` y en `frontend/web/src/types/`.
 
 ## 0. Convenciones
 
 - Base URL: `VITE_API_URL` (por ejemplo `https://api.synapz.app`, sin `/api` ni barra final). Todas las rutas empiezan por `/api`.
-- Auth: `Authorization: Bearer <JWT de Supabase>` en todas las rutas. El rol sale del JWT (`teacher` | `student`).
+- Auth: `Authorization: Bearer <token de sesión de Foundathyon>` en todas las rutas (salvo `/health`). El backend valida el token (Foundathyon Auth, `api.foundathyon.com`, con Google OAuth2 o correo y contraseña), obtiene el UUID del usuario y lee su rol (`teacher` | `student`) de `public.profiles.role`. El rol nunca se toma del token ni de lo que envía el cliente.
+- Acceso a datos: el frontend no se conecta a ninguna base de datos. Todo acceso a PostgreSQL pasa por el backend (desplegado en Render), que en cada petición verifica el rol y la pertenencia al aula (`classrooms.teacher_id` para el docente, `classroom_members.student_id` para el alumno). Las respuestas dirigidas a alumnos omiten `syllabus_topics.material_text`.
+- Primer acceso: la primera vez que el backend valida la sesión de un usuario, crea su fila en `public.profiles` con `INSERT INTO public.profiles (id, role, full_name) ... ON CONFLICT (id) DO NOTHING`. El rol inicial es `student`. No hay triggers sobre tablas de autenticación.
 - JSON en `snake_case`. IDs `uuid` como `string`. Fechas ISO 8601 UTC como `string`.
 - Cuerpo `application/json`, salvo los endpoints `multipart/form-data` indicados.
 - Error uniforme:
@@ -37,7 +39,7 @@ class ApiError(BaseModel):
     details: dict[str, Any] | None = None
 ```
 
-Códigos HTTP: `400/422` validación, `401` sin sesión, `403` rol o aula incorrectos, `404`, `413` archivo grande, `502` salida de IA inválida, `503` IA no disponible.
+Códigos HTTP: `400/422` validación, `401` sin sesión o token inválido, `403` rol o aula incorrectos, `404`, `413` archivo grande, `502` salida de IA inválida, `503` IA no disponible.
 
 Tipos compartidos:
 
@@ -61,22 +63,23 @@ class Grounding(BaseModel):
 
 ---
 
-## 1. Tablas de PostgreSQL (Supabase)
+## 1. Tablas de PostgreSQL (Foundathyon)
 
-RLS activado en todas. `auth.users` lo gestiona Supabase Auth: no se crea en las migraciones, solo se referencia. Esquema completo en `supabase/migrations/0001_core_schema.sql` (todo lo de esta sección salvo las tres últimas tablas) y `0002_adaptive_engine.sql`.
+Base de datos: PostgreSQL de Foundathyon (`DATABASE_URL`, solo en `backend/`). Esquema completo en `supabase/migrations/0001_core_schema.sql` (todo lo de esta sección salvo las tres últimas tablas) y `0002_adaptive_engine.sql`. La carpeta se llama `supabase/` por historia: las migraciones se aplican a Foundathyon (ver `supabase/README.md`).
 
-Reglas de acceso del cliente (`authenticated`). El backend usa `service_role` y omite RLS:
+Modelo de acceso:
 
-- Todo usuario nuevo nace `student`. El rol no se toma de lo que envía el cliente. Un docente se asciende con `update profiles set role = 'teacher'` desde el panel de Supabase o con `service_role` (ver `supabase/README.md`). El rol se copia a `app_metadata.role` del JWT.
-- El cliente solo escribe: `profiles` (`full_name`, `interests`, `onboarding_completed`), `classrooms` y `syllabus_topics` (solo el docente dueño; sin `invite_code` ni `material_text`). Todo lo demás es de solo lectura para el cliente.
-- `syllabus_topics.material_text` no es legible por el cliente. No usar `select *` sobre esa tabla.
-- `anon` no accede a nada.
-
+- No hay Row Level Security, ni roles `anon`/`authenticated`, ni PostgREST. Ningún cliente se conecta a la base: el backend es el único con `DATABASE_URL`, y la autorización vive en su código (rol, `teacher_id` / `student_id` y pertenencia al aula).
+- `profiles.id` es el UUID que entrega Foundathyon Auth. No hay `auth.users` ni claves foráneas hacia el esquema de autenticación.
+- Todo usuario nuevo nace `student`. Lo crea el backend al validar la primera sesión (ver §0). El rol no se toma de lo que envía el cliente. Un docente se asciende con `UPDATE public.profiles SET role = 'teacher' WHERE id = '<uuid>'` ejecutado por un administrador (ver `supabase/README.md`).
+- El cliente solo puede cambiar, a través del backend: su `profiles` (`full_name`, `interests`, `onboarding_completed`), y, siendo docente dueño, sus `classrooms` y `syllabus_topics` (sin `invite_code` ni `material_text`). Todo lo demás lo escribe el backend como resultado de una acción del alumno o del docente.
+- `syllabus_topics.material_text` nunca sale hacia alumnos.
+- Funciones SQL (secciones "Funciones SQL" al final de este apartado): reciben el UUID del usuario desde el backend, que lo extrae del token validado.
 ### `profiles`
 
 | Columna                | Tipo        | Notas                                                                                                                                                                         |
 | ---------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`                   | uuid PK     | = `auth.users.id`                                                                                                                                                             |
+| `id`                   | uuid PK     | UUID del usuario en Foundathyon Auth; lo inserta el backend en el primer acceso                                                                                                                                                             |
 | `role`                 | text        | `teacher` \| `student`                                                                                                                                                        |
 | `full_name`            | text        |                                                                                                                                                                               |
 | `interests`            | jsonb       | `{ likes: string[], hobbies: string[], daily_activities: string[], aspirations: string[], preferred_modality: "visual"\|"reading"\|"auditory", improvement_areas: string[] }` |
@@ -111,7 +114,7 @@ Reglas de acceso del cliente (`authenticated`). El backend usa `service_role` y 
 | `classroom_id`   | uuid FK |                                                          |
 | `title`          | text    |                                                          |
 | `kind`           | text    | `cycle` \| `prerequisite`                                |
-| `scheduled_date` | date    | calendario editable                                      |
+| `scheduled_date` | date    | calendario editable; null si aún no se agenda                                      |
 | `status`         | text    | `pending` \| `taught` \| `review`                        |
 | `position`       | int     | orden                                                    |
 | `material_text`  | text    | texto extraído (PDF/PPTX/notas), base de la Regla de Oro |
@@ -155,7 +158,7 @@ Reglas de acceso del cliente (`authenticated`). El backend usa `service_role` y 
 | `points`                     | int         |                                                           |
 | `correct`, `total`           | int         |                                                           |
 | `duration_ms`                | int         |                                                           |
-| `created_at`                 | timestamptz | **Realtime habilitado** (publicación `supabase_realtime`) |
+| `created_at`                 | timestamptz | Índice `(classroom_id, created_at desc)`. Único `(student_id, game_id)`: una partida no se registra dos veces |
 
 ### `feyn_sessions`
 
@@ -169,10 +172,18 @@ Reglas de acceso del cliente (`authenticated`). El backend usa `service_role` y 
 | `coverage`                               | numeric     | 0–1, conceptos clave cubiertos                        |
 | `updated_at`                             | timestamptz |                                                       |
 
-Tabla de apoyo no listada en el pedido original, necesaria para las lecciones adaptadas: se puede guardar en `student_diagnostics.detail` si se prefiere no crearla.
+### `lesson_events`
 
-- `lesson_events` (`id`, `student_id`, `topic_id`, `modality`, `created_at`, `understood boolean`): para medir qué formato funciona en el reporte.
+Qué formato de explicación funciona para cada alumno. Alimenta los puntos de inflexión y el reporte.
 
+| Columna      | Tipo        | Notas                                         |
+| ------------ | ----------- | --------------------------------------------- |
+| `id`         | uuid PK     |                                               |
+| `student_id` | uuid FK     |                                               |
+| `topic_id`   | uuid FK     |                                               |
+| `modality`   | text        | `visual` \| `reading` \| `auditory`           |
+| `understood` | boolean     | null si el alumno aún no responde             |
+| `created_at` | timestamptz |                                               |
 ### `topic_score_events`
 
 Historial de dominio por tema. Alimenta las series de la vista Progreso (`ProgressTopic.trend`).
@@ -222,6 +233,7 @@ Series de nivelación sin límite de tiempo. El backend las genera por alumno a 
 | `best_first_try_pct`         | numeric     | 0–100, mejor resultado de aciertos a la primera. Es el progreso de la tarjeta |
 | `attempts`                   | int         | default 0                                                                    |
 | `updated_at`                 | timestamptz |                                                                              |
+
 ### `strategies`
 
 Estrategias que el docente aplicó, para los puntos de inflexión del reporte (§2.8). Escribe el backend.
@@ -282,15 +294,40 @@ Una fila por partida de Retos que mide al alumno. Incluye las partidas descartad
 | `events`                   | jsonb        | `TelemetryEvent[]`                                                                 |
 | `created_at`               | timestamptz  | Índice `(student_id, created_at desc)`                                             |
 
-RLS de las tres: el alumno solo lee sus filas (`student_id = auth.uid()`). No hay políticas de escritura: escribe el backend con `service_role`. Migración: `supabase/migrations/0002_adaptive_engine.sql`.
+Las tres tablas las lee y las escribe solo el backend. Un alumno recibe únicamente sus propias filas (`student_id` = el del token). El docente no las lee. Migración: `supabase/migrations/0002_adaptive_engine.sql`.
 
+### Funciones SQL
+
+Las funciones reciben el UUID del usuario como parámetro porque la base no conoce la sesión. El backend lo extrae del token de Foundathyon ya validado. Nunca lo envía el cliente.
+
+| Función | Descripción |
+| --- | --- |
+| `public.generate_invite_code() returns text` | Genera un código de 6 caracteres (A-Z y 2-9, sin I, O, 0 ni 1) que no existe todavía. Un trigger `BEFORE INSERT` en `classrooms` lo asigna a `invite_code`, y el cliente no lo elige. |
+| `public.regenerate_invite_code(p_classroom_id uuid, p_teacher_id uuid) returns text` | Genera un código nuevo para el aula si `teacher_id = p_teacher_id` y lo devuelve. El anterior deja de funcionar. Si el aula no es del docente, lanza `FORBIDDEN` (`42501`). |
+| `public.join_classroom(p_code text, p_student_id uuid) returns uuid` | Solo para alumnos: ignora mayúsculas y espacios del código, agrega a `p_student_id` como miembro (`ON CONFLICT DO NOTHING`) y devuelve el `classroom_id`. Errores: `FORBIDDEN` (`42501`) si el usuario no es alumno y `NOT_FOUND` (`P0002`) si el código no existe. |
+| `public.touch_updated_at()` | Trigger que actualiza `updated_at` en `feyn_sessions`, `remedial_sets`, `student_abilities` y `student_socioemotional`. |
+
+El backend traduce `42501` a `403 FORBIDDEN` y `P0002` a `404 NOT_FOUND`.
+
+### Almacenamiento (Supabase Storage)
+
+Supabase se usa únicamente como almacenamiento de archivos privados. No guarda datos de la aplicación ni autentica usuarios.
+
+| Bucket          | Contenido                          | Tipos MIME                                                                                     | Límite |
+| --------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------- | ------ |
+| `materials`     | Material del docente por tema      | `application/pdf`, `application/vnd.openxmlformats-officedocument.presentationml.presentation` | 20 MB  |
+| `reading-audio` | Grabaciones de lectura en voz alta | `audio/webm`, `audio/ogg`, `audio/mp4`, `audio/wav`                                            | 10 MB  |
+
+- Los dos buckets son privados y no tienen políticas para el cliente. El frontend no sube ni descarga nada directamente de Supabase.
+- El backend sube los binarios y genera URLs firmadas de corta duración con `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`. La ruta queda en `syllabus_topics.material_files[].storage_path` o en `reading_sessions.audio_attempts[].storage_path`.
+- El audio solo lo ven el propio alumno y su docente, con URLs firmadas que emite el backend tras verificar el aula.
 ---
 
 ## 2. Endpoints
 
 ### 2.1 `POST /api/materials/upload` (rol: `teacher`)
 
-`multipart/form-data`: `file` (PDF o PPTX, máx. 20 MB), `topic_id` (uuid). Guarda el archivo en Storage, extrae el texto (`pypdf` / `python-pptx`) y lo añade a `syllabus_topics.material_text`.
+`multipart/form-data`: `file` (PDF o PPTX, máx. 20 MB), `topic_id` (uuid). El backend sube el archivo al bucket privado `materials` de Supabase Storage, extrae el texto (`pypdf` / `python-pptx`) y lo añade a `syllabus_topics.material_text`. El frontend nunca habla con Supabase.
 
 ```ts
 export interface UploadMaterialResponse {
@@ -446,7 +483,7 @@ Nota: `correct_index` y `answer` viajan al cliente porque la corrección de este
 
 ### 2.4 `POST /api/reading/evaluate-audio` (rol: `student`)
 
-`multipart/form-data`: `audio` (`audio/webm`, `audio/ogg`, `audio/mp4` o `audio/wav`; máx. 10 MB y 3 min), `reading_session_id` (uuid), `attempt` (int ≥ 1).
+`multipart/form-data`: `audio` (`audio/webm`, `audio/ogg`, `audio/mp4` o `audio/wav`; máx. 10 MB y 3 min), `reading_session_id` (uuid), `attempt` (int ≥ 1). El backend guarda el audio en el bucket privado `reading-audio` de Supabase Storage.
 
 ```ts
 export type AudioErrorType =
@@ -702,7 +739,7 @@ class QuickGameResponse(BaseModel):
     questions: list[QuickGameQuestion]
 ```
 
-Los puntos se calculan en el servidor al recibir `submit`. El servidor inserta en `math_game_scores`. El cliente recibe el ranking en vivo por Supabase Realtime, filtrando `classroom_id=eq.<id>`, y no por este endpoint. El estado inicial del ranking se pide a `GET /api/math/leaderboard` (§2.11).
+Los puntos se calculan en el servidor al recibir `submit`. El servidor inserta en `math_game_scores`. El ranking en vivo no sale de este endpoint: el cliente lo consulta con `GET /api/math/leaderboard` (§2.11), repitiendo la petición cada pocos segundos mientras la pantalla esté abierta.
 
 ### 2.8 `GET /api/reports/classroom/{id}` (rol: `teacher`, dueño del aula)
 
@@ -789,7 +826,7 @@ class ClassroomReport(BaseModel):
 
 `reference.group_level` usa la misma regla de §2.10 aplicada a `overall_avg`. `target_min_score` es el límite inferior del `target_level` según esa regla.
 
-Para registrar estrategias (punto de inflexión): `POST /api/reports/classroom/{id}/strategies` con `{ description: string; applied_at: string; topic_id?: string }` → `{ strategy_id: string }`. Requiere una tabla `strategies` (`id`, `classroom_id`, `topic_id`, `description`, `applied_at`).
+Para registrar estrategias (punto de inflexión): `POST /api/reports/classroom/{id}/strategies` con `{ description: string; applied_at: string; topic_id?: string }` → `{ strategy_id: string }`. El backend la guarda en la tabla `strategies` (§1) y solo la acepta del docente dueño del aula.
 
 ### 2.9 `GET /api/reports/student/{id}` (rol: `teacher` dueño del aula, o el propio `student`)
 
@@ -976,7 +1013,7 @@ Cómo se calcula cada campo:
 
 ### 2.11 `GET /api/math/leaderboard` (rol: `student` miembro del aula, o `teacher` dueño)
 
-Estado inicial del ranking grupal. Las actualizaciones posteriores llegan por Supabase Realtime (§2.7).
+Ranking grupal del aula. El cliente lo consulta al abrir la pantalla y lo repite cada 5 segundos (sondeo) mientras esté visible, y de inmediato al terminar una partida. No hay suscripciones en tiempo real a la base de datos.
 Query: `classroom_id` (uuid).
 
 ```ts
@@ -1008,7 +1045,7 @@ class LeaderboardResponse(BaseModel):
 
 - El nombre se abrevia (nombre y inicial del apellido) porque los alumnos son menores de edad.
 - Para el `teacher` dueño del aula, `is_me` es siempre `false`.
-- Con un `INSERT` en `math_game_scores` del aula, el cliente suma `points` a la entrada del `student_id`. Si ese alumno no está en la lista, o cambia `classroom_members.bonus_points`, vuelve a pedir este endpoint.
+- Cada respuesta trae el ranking completo y ordenado: el cliente reemplaza la lista y no calcula nada. Los puntos extra del docente (§2.16) aparecen en la siguiente consulta.
 
 ### 2.12 `GET /api/social/streak-friends` (rol: `student`)
 
@@ -1284,11 +1321,11 @@ class GrantBonusPointsResponse(BaseModel):
     total_points: int
 ```
 
-Inserta en `bonus_point_events` y suma a `classroom_members.bonus_points`. Todos los clientes del aula ven el cambio al volver a pedir §2.11 (Realtime sobre `classroom_members`). Errores: `FORBIDDEN` si el aula no es del docente, `NOT_FOUND` si el alumno no es miembro y `VALIDATION_ERROR`.
+Inserta en `bonus_point_events` y suma a `classroom_members.bonus_points`. Todos los clientes del aula ven el cambio en su siguiente consulta de §2.11. Errores: `FORBIDDEN` si el aula no es del docente, `NOT_FOUND` si el alumno no es miembro y `VALIDATION_ERROR`.
 
 ### 2.17 Motor adaptativo PISA (rol: `student`)
 
-Mide cada partida de Retos, actualiza la habilidad θ por dominio y devuelve la dificultad y las banderas de interfaz. El `student_id` sale del JWT: nunca viaja en el cuerpo. El ajedrez no se mide (dos personas en el mismo dispositivo) y devuelve `VALIDATION_ERROR`. Los errores usan `detail: { code, message }` de `ApiError`.
+Mide cada partida de Retos, actualiza la habilidad θ por dominio y devuelve la dificultad y las banderas de interfaz. El `student_id` sale del token de sesión de Foundathyon: nunca viaja en el cuerpo. El ajedrez no se mide (dos personas en el mismo dispositivo) y devuelve `VALIDATION_ERROR`. Los errores usan `detail: { code, message }` de `ApiError`.
 
 ```ts
 export type GameId = "batalla" | "calculo" | "sudoku" | "ajedrez" | "quince" | "buscaminas" | "tangram" | "tetris" | "memorama";
@@ -1382,25 +1419,38 @@ Reglas del servidor (detalle en `docs/ADAPTIVE_ENGINE.md`): adivinación rápida
 
 ---
 
-## 3. Acceso directo desde el frontend a Supabase (sin pasar por FastAPI)
+## 3. Endpoints de datos (acceso a PostgreSQL solo mediante el backend)
 
-| Operación                      | Tabla                           | Notas                                                                 |
-| ------------------------------ | ------------------------------- | --------------------------------------------------------------------- |
-| Registro e inicio de sesión    | `auth`                          | El rol (`teacher` \| `student`) se lee de `profiles.role` tras iniciar sesión |
-| Leer/editar perfil e intereses | `profiles`                      | RLS: solo el propio usuario                                           |
-| Crear aula                     | `classrooms`                    | RLS: solo `teacher` dueño. Un trigger SQL genera `invite_code` único de 6 caracteres (A-Z y 2-9, sin I, O, 0, 1) |
-| Regenerar código               | RPC `regenerate_invite_code(classroom_id uuid)` | Función SQL `security definer`. Devuelve el código nuevo; el anterior deja de funcionar. Error `42501` si el aula no es del docente |
-| Unirse con código              | RPC `join_classroom(code text)` | Función SQL `security definer`. Solo alumnos; ignora mayúsculas y espacios. Devuelve el `classroom_id`. Errores: `42501` (no es alumno) y `P0002` (código inexistente). Si ya es miembro, no hace nada |
-| CRUD de temas y calendario     | `syllabus_topics`               | RLS: solo `teacher` dueño. `material_text` solo lo escribe el backend |
-| Ranking en vivo                | `math_game_scores`              | Suscripción Realtime `postgres_changes` con filtro por aula. Estado inicial: §2.11 |
+El frontend no usa `supabase-js` ni se conecta a ninguna base de datos. Estas son las operaciones de datos básicas. Todas exigen el token de sesión de Foundathyon (§0). El backend resuelve el usuario y su rol desde `public.profiles`, verifica la pertenencia al aula y ejecuta la consulta con `DATABASE_URL`.
+
+| Operación | Endpoint | Rol | Qué hace el backend |
+| --- | --- | --- | --- |
+| Iniciar sesión | Foundathyon Auth (`api.foundathyon.com`) | Cualquiera | Google OAuth2 o correo y contraseña. El navegador obtiene el token de sesión y lo envía al backend. |
+| Perfil propio | `GET /api/me` | Cualquiera | Valida el token. Si es el primer acceso, ejecuta `INSERT INTO public.profiles (id, role, full_name) ... ON CONFLICT (id) DO NOTHING` y devuelve `{ id, role, full_name, interests, onboarding_completed }`. |
+| Editar perfil e intereses | `PATCH /api/me` | Cualquiera | Solo `full_name`, `interests` y `onboarding_completed`. Ignora cualquier otro campo, incluido `role`. |
+| Listar mis aulas | `GET /api/classrooms` | `teacher`, `student` | Docente: las que creó (`teacher_id`). Alumno: aquellas donde es miembro (`classroom_members.student_id`). Devuelve los campos de `classrooms` más `teacher_name`. |
+| Crear aula | `POST /api/classrooms` | `teacher` | Cuerpo `{ name, subject, subject_area, grade_group }`. El trigger SQL genera `invite_code` y el backend devuelve el aula con su código. |
+| Editar o borrar aula | `PATCH` / `DELETE /api/classrooms/{id}` | `teacher` dueño | Solo `name`, `subject`, `subject_area`, `grade_group`. Nunca `invite_code` ni `teacher_id`. |
+| Regenerar código | `POST /api/classrooms/{id}/invite-code` | `teacher` dueño | Llama `public.regenerate_invite_code(p_classroom_id, p_teacher_id)` y devuelve `{ invite_code }`. `42501` → `403 FORBIDDEN`. |
+| Unirse con código | `POST /api/classrooms/join` | `student` | Cuerpo `{ code }`. Llama `public.join_classroom(p_code, p_student_id)` y devuelve `{ classroom_id }`. `42501` → `403 FORBIDDEN`, `P0002` → `404 NOT_FOUND`. |
+| Alumnos del aula | `GET /api/classrooms/{id}/members` | `teacher` dueño | Lista `{ student_id, full_name, joined_at, bonus_points }` (requisito A1 CA4). |
+| Temas y calendario | `GET /api/classrooms/{id}/topics` | `teacher` dueño, `student` miembro | Devuelve las columnas de `syllabus_topics` sin `material_text`. A los alumnos nunca se les envía ese texto. |
+| Crear, editar y borrar temas | `POST` / `PATCH` / `DELETE /api/classrooms/{id}/topics[/{topic_id}]` | `teacher` dueño | Escribe `title`, `kind`, `scheduled_date`, `status` y `position`. `material_text` y `material_files` solo cambian con `POST /api/materials/upload` (§2.1). |
+| Ranking del aula | `GET /api/math/leaderboard` | `student`, `teacher` | Ver §2.11. Se consulta cada 5 segundos mientras la pantalla esté abierta. |
+
+Los esquemas de cuerpo y respuesta de estas operaciones siguen los nombres de columnas de §1. Quedan por definir en `backend/app/schemas/`.
 
 El anti-trampa se envía con la entrega del diagnóstico. Endpoint pendiente de definir: `POST /api/diagnostics/prior-knowledge/submit` con `{ diagnostic_id, answers, integrity_events }`.
 
 ## 4. Pendientes del contrato
 
 1. Endpoints de diagnóstico de conocimientos previos (generar y entregar) y de verificación del modo cloze.
-2. Límite de uso (rate limit) por usuario para los endpoints con Gemini y para `join_classroom` (hoy un alumno puede probar códigos sin límite).
+2. Límite de uso (rate limit) por usuario para los endpoints con Gemini y para `POST /api/classrooms/join` (hoy un alumno puede probar códigos sin límite).
 3. `GET /api/progress/me` (§2.10) debe tomar `reference_level` de `GET /api/adaptive/profile` cuando exista su router.
-4. Cliente de autenticación real en el frontend (`@supabase/supabase-js`): registro, inicio de sesión y envío del JWT al backend.
+4. Confirmar el mecanismo de validación del token de Foundathyon. `core/security.py` asume un JWT firmado con `FOUNDATHYON_JWT_SECRET` (`FOUNDATHYON_JWT_ALGORITHM`, HS256 por defecto) cuyo `sub` es el UUID del usuario. El resto de la arquitectura ya está en el código: `DATABASE_URL`, alta del perfil en el primer acceso y `supabase` solo para Storage.
+5. Cliente de autenticación real en el frontend con Foundathyon Auth (Google OAuth2 y correo y contraseña) y envío del token al backend. Hoy `services/auth.ts` es una simulación.
+6. Definir en `backend/app/schemas/` los modelos de los endpoints de §3.
+7. Separar en un archivo propio, aplicable al proyecto de Supabase, el bloque de buckets que hoy está al final de `0001_core_schema.sql` (usa `storage.buckets`, que no existe en la base de Foundathyon).
+8. Si el sondeo de §2.11 resulta insuficiente, evaluar SSE o WebSocket desde FastAPI.
 
 Resueltos: todas las tablas de §1 tienen migración en `supabase/migrations/` (`0001_core_schema.sql` y `0002_adaptive_engine.sql`), incluida `strategies`.

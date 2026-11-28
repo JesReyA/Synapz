@@ -5,14 +5,14 @@ import pytest
 
 # `app.core.config` exige esta variable al importarse.
 os.environ.setdefault("GEMINI_API_KEY", "test")
-os.environ.setdefault("SUPABASE_JWT_SECRET", "test-secret-test-secret-test-secret")
+os.environ.setdefault("FOUNDATHYON_JWT_SECRET", "test-secret-test-secret-test-secret")
 
 from app.services.adaptive_repository import AbilityRow, AttemptRecord, RecentAttempt  # noqa: E402
 from app.services.socioemotional import SocioProfile  # noqa: E402
 
 
 class InMemoryRepository:
-    """Repositorio en memoria con la misma interfaz que `SupabaseAdaptiveRepository`."""
+    """Repositorio en memoria con la misma interfaz que `PostgresAdaptiveRepository`."""
 
     def __init__(self) -> None:
         self.abilities: dict[tuple[UUID, str], AbilityRow] = {}
@@ -38,6 +38,25 @@ class InMemoryRepository:
     def insert_attempt(self, record):
         self.attempts.append(record)
         return uuid4()
+
+
+class InMemoryProfiles:
+    """Perfiles en memoria con la misma interfaz que `PostgresProfileStore`."""
+
+    def __init__(self) -> None:
+        self.roles: dict[UUID, str] = {}
+        self.created: list[UUID] = []
+
+    def ensure_profile(self, user_id, full_name):
+        if user_id not in self.roles:
+            self.roles[user_id] = "student"
+            self.created.append(user_id)
+        return self.roles[user_id]
+
+
+@pytest.fixture
+def profiles() -> InMemoryProfiles:
+    return InMemoryProfiles()
 
 
 @pytest.fixture

@@ -1,75 +1,32 @@
-# React + TypeScript + Vite
+# Synapz: frontend web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+App del alumno y del profesor. React 19, Vite, TypeScript estricto, Tailwind CSS v4, `recharts` y `lucide-react`. Se despliega en Vercel con `frontend/web` como raíz del proyecto.
 
-Currently, two official plugins are available:
+La estructura y las reglas de modularidad están en [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md), el diseño en [`DESIGN.md`](./DESIGN.md) y los contratos de datos en [`../../API_CONTRACT.md`](../../API_CONTRACT.md).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Comandos
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+pnpm install
+pnpm run dev    # servidor de desarrollo
+pnpm build      # tsc -b && vite build
+pnpm lint       # eslint
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+## Variables de entorno
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Copia `.env.example` a `.env`. Vite incrusta estas variables al compilar: en Vercel, defínelas antes del build y vuelve a desplegar al cambiarlas.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Variable                    | Uso                                                                                                  |
+| --------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `VITE_API_URL`              | URL del backend en Render, sin barra final ni `/api` (por ejemplo `https://api.synapz.app`)          |
+| `VITE_FOUNDATHYON_AUTH_URL` | Endpoint de Foundathyon Auth (`https://api.foundathyon.com`) para iniciar sesión con Google o correo |
+| `VITE_DEMO_MODE`            | `true` activa los accesos rápidos de demostración. Debe ser `false` en producción                    |
 
-```
+## Datos y autenticación
+
+- El frontend **no usa `supabase-js`** ni se conecta a ninguna base de datos. Todo dato pasa por el backend (`src/services/`, único lugar con `fetch`).
+- El inicio de sesión es con Foundathyon Auth. El token de sesión viaja al backend como `Authorization: Bearer <token>`, y el backend decide el rol y los permisos.
+- Los archivos (material del profesor y audios) los sube y firma el backend. El navegador no habla con Supabase.
+- Nunca pongas `DATABASE_URL`, `SUPABASE_URL` ni `SUPABASE_SERVICE_ROLE_KEY` en este proyecto: son del backend.
+- Hoy `src/services/auth.ts` es una simulación y varios servicios (`mock*.ts`) devuelven datos de ejemplo. Se sustituyen por llamadas reales al backend sin cambiar los componentes.

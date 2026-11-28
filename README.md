@@ -58,6 +58,19 @@ Hoy, el sistema educativo enfrenta tres fracturas críticas:
 
 ---
 
+## Arquitectura técnica
+
+| Capa | Tecnología | Despliegue |
+|---|---|---|
+| Frontend | React 19, Vite, TypeScript estricto y Tailwind CSS v4 | Vercel |
+| Backend | FastAPI (Python) y Gemini. Único componente con acceso a datos: valida la sesión, el rol y la pertenencia al aula | Render |
+| Autenticación y base de datos | **Foundathyon** (Auth con Google OAuth2 y correo, y PostgreSQL) | Foundathyon |
+| Archivos privados | **Supabase Storage** (material del profesor y audios de lectura) | Supabase |
+
+El navegador solo habla con el backend y con Foundathyon Auth para iniciar sesión. Nunca se conecta a la base de datos ni a Supabase. Detalles en [`ARCHITECTURE.md`](./ARCHITECTURE.md), [`API_CONTRACT.md`](./API_CONTRACT.md) y [`supabase/README.md`](./supabase/README.md).
+
+---
+
 ## Roadmap Post-Hackathon (Fase 2)
 
 - **Puente Inter-Ciclo Escolar:** Prueba de nivel de salida al finalizar el año escolar para entregar un mapa de transición al docente del siguiente grado.

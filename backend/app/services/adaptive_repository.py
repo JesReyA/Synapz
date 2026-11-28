@@ -1,13 +1,12 @@
-"""Acceso a datos del motor adaptativo. Único módulo que habla con Supabase."""
+"""Acceso a datos del motor adaptativo. Único módulo que habla con PostgreSQL (Foundathyon) para estas tablas."""
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import Any, Protocol
 from uuid import UUID
 
-from app.services.socioemotional import SocioProfile
+from psycopg.types.json import Jsonb
+from psycopg_pool import ConnectionPool
 
-if TYPE_CHECKING:
-    from supabase import Client
+from app.services.socioemotional import SocioProfile
 
 
 @dataclass(frozen=True)
@@ -50,53 +49,42 @@ class AdaptiveRepository(Protocol):
     def insert_attempt(self, record: AttemptRecord) -> UUID: ...
 
 
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+class PostgresAdaptiveRepository:
+    """Implementación sobre PostgreSQL con consultas parametrizadas. La autorización la hace el router."""
 
-
-class SupabaseAdaptiveRepository:
-    """Implementación sobre PostgREST con la clave de servicio (RLS no aplica al backend)."""
-
-    def __init__(self, client: "Client") -> None:
-        self._db = client
+    def __init__(self, pool: ConnectionPool) -> None:
+        self._pool = pool
 
     def get_abilities(self, student_id: UUID) -> dict[str, AbilityRow]:
-        rows = (
-            self._db.table("student_abilities")
-            .select("domain_id, theta, items_completed")
-            .eq("student_id", str(student_id))
-            .execute()
-            .data
-        )
+        with self._pool.connection() as conn:
+            rows = conn.execute(
+                "SELECT domain_id, theta, items_completed FROM public.student_abilities WHERE student_id = %s",
+                (student_id,),
+            ).fetchall()
         return {
             row["domain_id"]: AbilityRow(row["domain_id"], float(row["theta"]), int(row["items_completed"]))
             for row in rows
         }
 
     def save_ability(self, student_id: UUID, ability: AbilityRow) -> None:
-        self._db.table("student_abilities").upsert(
-            {
-                "student_id": str(student_id),
-                "domain_id": ability.domain_id,
-                "theta": ability.theta,
-                "items_completed": ability.items_completed,
-                "updated_at": _now(),
-            },
-            on_conflict="student_id,domain_id",
-        ).execute()
+        with self._pool.connection() as conn:
+            conn.execute(
+                "INSERT INTO public.student_abilities (student_id, domain_id, theta, items_completed) "
+                "VALUES (%s, %s, %s, %s) "
+                "ON CONFLICT (student_id, domain_id) DO UPDATE SET "
+                "theta = EXCLUDED.theta, items_completed = EXCLUDED.items_completed, updated_at = now()",
+                (student_id, ability.domain_id, ability.theta, ability.items_completed),
+            )
 
     def get_socio(self, student_id: UUID) -> SocioProfile:
-        rows = (
-            self._db.table("student_socioemotional")
-            .select("anxiety_index, self_efficacy_index, perseverance_index, metacognition_index")
-            .eq("student_id", str(student_id))
-            .limit(1)
-            .execute()
-            .data
-        )
-        if not rows:
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                "SELECT anxiety_index, self_efficacy_index, perseverance_index, metacognition_index "
+                "FROM public.student_socioemotional WHERE student_id = %s",
+                (student_id,),
+            ).fetchone()
+        if row is None:
             return SocioProfile()
-        row = rows[0]
         return SocioProfile(
             anxiety=float(row["anxiety_index"]),
             self_efficacy=float(row["self_efficacy_index"]),
@@ -105,54 +93,64 @@ class SupabaseAdaptiveRepository:
         )
 
     def save_socio(self, student_id: UUID, profile: SocioProfile) -> None:
-        self._db.table("student_socioemotional").upsert(
-            {
-                "student_id": str(student_id),
-                "anxiety_index": profile.anxiety,
-                "self_efficacy_index": profile.self_efficacy,
-                "perseverance_index": profile.perseverance,
-                "metacognition_index": profile.metacognition,
-                "hide_timers": profile.hide_timers,
-                "auto_enable_scaffolding": profile.auto_enable_scaffolding,
-                "updated_at": _now(),
-            },
-            on_conflict="student_id",
-        ).execute()
+        with self._pool.connection() as conn:
+            conn.execute(
+                "INSERT INTO public.student_socioemotional "
+                "(student_id, anxiety_index, self_efficacy_index, perseverance_index, metacognition_index, "
+                "hide_timers, auto_enable_scaffolding) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) "
+                "ON CONFLICT (student_id) DO UPDATE SET "
+                "anxiety_index = EXCLUDED.anxiety_index, "
+                "self_efficacy_index = EXCLUDED.self_efficacy_index, "
+                "perseverance_index = EXCLUDED.perseverance_index, "
+                "metacognition_index = EXCLUDED.metacognition_index, "
+                "hide_timers = EXCLUDED.hide_timers, "
+                "auto_enable_scaffolding = EXCLUDED.auto_enable_scaffolding, "
+                "updated_at = now()",
+                (
+                    student_id,
+                    profile.anxiety,
+                    profile.self_efficacy,
+                    profile.perseverance,
+                    profile.metacognition,
+                    profile.hide_timers,
+                    profile.auto_enable_scaffolding,
+                ),
+            )
 
     def recent_attempts(self, student_id: UUID, limit: int) -> list[RecentAttempt]:
-        rows = (
-            self._db.table("game_attempts")
-            .select("score_ratio, is_rapid_guess")
-            .eq("student_id", str(student_id))
-            .order("created_at", desc=True)
-            .limit(limit)
-            .execute()
-            .data
-        )
+        with self._pool.connection() as conn:
+            rows = conn.execute(
+                "SELECT score_ratio, is_rapid_guess FROM public.game_attempts "
+                "WHERE student_id = %s ORDER BY created_at DESC LIMIT %s",
+                (student_id, limit),
+            ).fetchall()
         return [RecentAttempt(float(r["score_ratio"]), bool(r["is_rapid_guess"])) for r in rows]
 
     def insert_attempt(self, record: AttemptRecord) -> UUID:
-        row = (
-            self._db.table("game_attempts")
-            .insert(
-                {
-                    "student_id": str(record.student_id),
-                    "game_id": record.game_id,
-                    "domain_id": record.domain_id,
-                    "process_id": record.process_id,
-                    "level": record.level,
-                    "completed": record.completed,
-                    "beta": record.beta,
-                    "score_ratio": record.score_ratio,
-                    "is_rapid_guess": record.is_rapid_guess,
-                    "theta_before": record.theta_before,
-                    "theta_after": record.theta_after,
-                    "general_metrics": record.general_metrics,
-                    "game_metrics": record.game_metrics,
-                    "events": record.events,
-                }
-            )
-            .execute()
-            .data[0]
-        )
-        return UUID(row["id"])
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                "INSERT INTO public.game_attempts "
+                "(student_id, game_id, domain_id, process_id, level, completed, beta, score_ratio, "
+                "is_rapid_guess, theta_before, theta_after, general_metrics, game_metrics, events) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                (
+                    record.student_id,
+                    record.game_id,
+                    record.domain_id,
+                    record.process_id,
+                    record.level,
+                    record.completed,
+                    record.beta,
+                    record.score_ratio,
+                    record.is_rapid_guess,
+                    record.theta_before,
+                    record.theta_after,
+                    Jsonb(record.general_metrics),
+                    Jsonb(record.game_metrics),
+                    Jsonb(record.events),
+                ),
+            ).fetchone()
+        if row is None:
+            raise RuntimeError("No se pudo guardar el intento.")
+        return UUID(str(row["id"]))

@@ -114,7 +114,7 @@ Como alumno, quiero explicarle el tema a Feyn con mis palabras para comprobar si
 ### D4. Juego rápido y retos de lógica
 Como alumno, quiero jugar contra el reloj y competir con mi grupo.
 - CA1: El juego muestra preguntas con 2 opciones, con operaciones básicas y temas vistos en clase, contra un reloj por partida.
-- CA2: Al terminar, mi puntaje se guarda y el ranking del aula se actualiza en vivo (Realtime) sin recargar.
+- CA2: Al terminar, mi puntaje se guarda y el ranking del aula se actualiza en vivo, sin recargar la página (el cliente lo consulta al backend cada pocos segundos).
 - CA3: El ranking muestra posición, nombre y puntos (incluidos los extra del profesor).
 - CA4: Sección recreativa de **rachas entre amigos** (estilo TikTok): días consecutivos de actividad y comparación con compañeros del aula.
 - CA5: **Sudoku** 9x9 en niveles fácil, medio y difícil, con validación de errores y temporizador. Los números son de colores: al elegir un número se resaltan sus iguales en el tablero, y se coloca o se quita tocando las casillas (sin botón de borrar). Las pistas iniciales no se modifican.
@@ -149,7 +149,7 @@ Como alumno, quiero ejercicios opcionales de repaso durante las vacaciones.
 
 ## F. Requisitos no funcionales
 
-- Seguridad: autenticación con Supabase Auth, RLS en todas las tablas, control de acceso por rol.
+- Seguridad: autenticación con Foundathyon Auth (Google OAuth2 y correo con contraseña). Todo acceso a la base de datos pasa por el backend, que valida la sesión, el rol (`teacher` o `student`) y la pertenencia al aula, y no entrega a los alumnos el texto del material del profesor. Los archivos (material y audios) se guardan en almacenamiento privado y solo se acceden mediante URLs firmadas que emite el backend.
 - Privacidad: los alumnos son menores de edad. Se guarda el mínimo de datos personales y el audio solo se conserva para el historial del propio alumno y su profesor.
 - Rendimiento: respuestas de Gemini en menos de 15 s. La interfaz muestra estado de carga.
 - Idioma: interfaz y contenido generado en español.
