@@ -10,6 +10,7 @@ import {
 } from "../lib/games/tangram.ts";
 import type { TanPlacement, TangramFigure } from "../types/tangram.ts";
 import { useGameTimer } from "./useGameTimer.ts";
+import { useReportOutcome } from "./useReportOutcome.ts";
 
 const NUDGE_STEP = 0.25;
 const ROTATION_STEP = 45;
@@ -59,6 +60,7 @@ export function useTangram() {
   const complete = useMemo(() => isFigureComplete(pieces, figure), [pieces, figure]);
   const selected = useMemo(() => pieces.find((p) => p.id === selectedId) ?? null, [pieces, selectedId]);
   const { elapsed, reset: resetTimer } = useGameTimer(started && !complete);
+  useReportOutcome(complete, () => ({ level: null, completed: true, metrics: { elapsed_s: elapsed } }));
 
   const update = useCallback((id: string, change: (piece: TanPlacement) => TanPlacement) => {
     setPieces((prev) => prev.map((p) => (p.id === id ? change(p) : p)));

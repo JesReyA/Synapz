@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FriendsStreakPanel } from "../components/challenges/FriendsStreakPanel.tsx";
 import { LiveLeaderboard } from "../components/challenges/LiveLeaderboard.tsx";
-import { GAME_COMPONENTS } from "../components/games/gameRegistry.tsx";
+import { GAME_COMPONENTS } from "../components/games/gameRegistry.ts";
 import { GamesMasonry } from "../components/games/GamesMasonry.tsx";
 import { GameView } from "../components/games/GameView.tsx";
 import { useLeaderboard } from "../hooks/useLeaderboard.ts";

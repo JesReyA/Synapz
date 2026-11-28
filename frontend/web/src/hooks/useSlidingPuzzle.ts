@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { isSolved, moveByDirection, moveTile, shuffledBoard } from "../lib/games/slidingPuzzle.ts";
 import type { SlideBoard, SlideDirection } from "../types/slidingPuzzle.ts";
 import { useGameTimer } from "./useGameTimer.ts";
+import { useReportOutcome } from "./useReportOutcome.ts";
 
 interface PuzzleState {
   board: SlideBoard;
@@ -36,6 +37,11 @@ export function useSlidingPuzzle(): SlidingPuzzleApi {
   const won = isSolved(game.board);
   const started = game.moves > 0;
   const { elapsed, reset: resetTimer } = useGameTimer(started && !won);
+  useReportOutcome(won, () => ({
+    level: null,
+    completed: true,
+    metrics: { moves: game.moves, elapsed_s: elapsed },
+  }));
 
   const tapTile = useCallback((index: number) => {
     setGame((prev) => applyMove(prev, (board) => moveTile(board, index)));

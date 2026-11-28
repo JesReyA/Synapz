@@ -14,9 +14,13 @@ Synapz/
 │       ├── DESIGN.md         # Fuente única de verdad visual
 │       ├── public/           # synapz.png, feyn.png
 │       └── src/
-├── backend/                  # FastAPI (existe solo app/main.py de ejemplo)
-│   └── app/
-├── docs/
+├── backend/                  # FastAPI
+│   ├── app/
+│   └── tests/                # pytest (motor adaptativo)
+├── supabase/
+│   ├── migrations/           # SQL versionado (0001 base, 0002 motor adaptativo)
+│   └── local/                # auth_stub.sql: solo para Postgres local
+├── docs/                     # ADAPTIVE_ENGINE.md
 ├── ARCHITECTURE.md
 ├── requirements.md
 ├── API_CONTRACT.md
@@ -48,7 +52,7 @@ Despliegue: frontend en **Vercel** (raíz del proyecto `frontend/web`), backend 
 | `components/` | Componentes de UI reutilizables (`Sidebar`, `ProgressCard`, …) | Un componente por archivo, PascalCase, export nombrado, props tipadas. Sin llamadas a la red. |
 | `pages/` | Una pantalla por archivo (`StudentHome`, `TeacherDashboard`, `Diagnostic`, `Reading`, `QuickGame`, …) | Compone componentes y hooks. Una página no supera ~150 líneas: se divide en componentes. |
 | `services/` | Acceso a datos: cliente de Supabase (`supabase.ts`) y cliente del backend (`api.ts` + un archivo por dominio) | Único lugar que llama a `fetch` o a Supabase. Funciones tipadas con los tipos de `types/`. |
-| `hooks/` | Hooks (`useTheme`, `useAuth`, `useAntiCheat`, `useAudioRecorder`, `useLeaderboard`) | Encapsulan estado y efectos. Usan `services/`. |
+| `hooks/` | Hooks (`useTheme`, `useAuth`, `useAntiCheat`, `useAudioRecorder`, `useLeaderboard`, `useGameTelemetry`) | Encapsulan estado y efectos. Usan `services/`. |
 | `types/` | Tipos e interfaces compartidos (`api.ts`, `db.ts`, …) | Reflejan `API_CONTRACT.md` campo por campo. |
 
 Reglas:
@@ -75,7 +79,7 @@ Variables de entorno del frontend: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 ```
 app/
 ├── main.py            # Crea la app, CORS, registra routers
-├── core/              # config (pydantic-settings), seguridad (verificación de JWT de Supabase), cliente Supabase, cliente Gemini
+├── core/              # config, security.py (JWT de Supabase y rol), supabase_client.py. Falta el cliente Gemini (hoy en services/gemini_service.py)
 ├── routers/           # Un archivo por dominio: materials, lessons, reading, feyn, math, reports
 ├── services/          # Lógica de negocio y llamadas a Gemini/Supabase. Sin objetos Request/Response de FastAPI
 └── schemas/           # Modelos Pydantic de entrada y salida (espejo de API_CONTRACT.md)
@@ -86,9 +90,16 @@ Reglas:
 2. Todo endpoint declara `response_model` y un `Request` Pydantic. No se devuelven `dict` sueltos.
 3. Todo endpoint (salvo `/health`) exige `Authorization: Bearer <JWT de Supabase>`. El rol se lee del JWT y se comprueba en cada ruta (por ejemplo, subir material solo con `teacher`).
 4. Salidas de Gemini en JSON estructurado (`response_mime_type="application/json"` con `response_schema`) y validadas con Pydantic antes de responder. Si no validan, se reintenta una vez y se devuelve `502`.
-5. Secretos solo en variables de entorno: `GEMINI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `CORS_ORIGINS`. Con `.env.example` actualizado. `backend/.env` no se versiona.
+5. Secretos solo en variables de entorno: `GEMINI_API_KEY`, `SUPABASE_URL`, `SUPABASE_KEY` (clave `service_role`), `SUPABASE_JWT_SECRET`, `CORS_ORIGINS`. Con `.env.example` actualizado. `backend/.env` no se versiona.
 6. Límites: tamaño máximo de archivos (PDF/PPTX 20 MB, audio 10 MB), tipos MIME permitidos, y tope de caracteres enviados a Gemini.
 7. `backend/requirements.txt` hoy es un volcado de un entorno con paquetes ajenos (keras, tensorboard, customtkinter, …). Se reemplaza por solo las dependencias del proyecto (`fastapi`, `uvicorn`, `pydantic-settings`, `python-multipart`, `pypdf`, `python-pptx`, `google-genai`, `supabase`, `python-jose` o `pyjwt`, `httpx`).
+
+### Motor adaptativo (PISA)
+
+Mide las partidas de Retos y adapta dificultad e interfaz. Diseño, mapa de juegos y reglas en `docs/ADAPTIVE_ENGINE.md`; contrato en `API_CONTRACT.md` §2.17.
+
+- Backend: `routers/adaptive.py` → `services/adaptive_service.py` → funciones puras (`irt`, `pisa_scale`, `scoring`, `telemetry_validator`, `socioemotional`, `difficulty_planner`, `pisa_catalog`) y `adaptive_repository.py` (único acceso a Supabase). No usa IA.
+- Frontend: `AdaptiveGameBoundary` envuelve cada juego (`withAdaptiveGame` en `gameRegistry.ts`). Los hooks de cada juego entregan su resultado con `useReportOutcome`.
 
 ## 4. Supabase
 
@@ -103,7 +114,7 @@ Reglas:
 1. **Row Level Security activado en todas las tablas.** Un alumno solo lee y escribe lo suyo. Un docente solo accede a las aulas que creó. Los rankings de un aula los leen sus miembros.
 2. El frontend usa la `anon` key y el JWT del usuario. El backend usa `service_role` y siempre verifica la pertenencia al aula antes de operar.
 3. Los archivos se suben por URLs firmadas o a través del backend, nunca con buckets públicos.
-4. Cambios de esquema como migraciones SQL versionadas en `supabase/migrations/` (carpeta aún por crear).
+4. Cambios de esquema como migraciones SQL versionadas en `supabase/migrations/`. Existen `0001_core_schema.sql` (perfiles, aulas, temas, datos del alumno, RLS, RPC, Realtime y Storage) y `0002_adaptive_engine.sql` (motor adaptativo). `supabase/local/auth_stub.sql` simula Supabase para probarlas en un Postgres local.
 
 ## 5. Regla de Oro de IA
 

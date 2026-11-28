@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { scoreForAnswer } from "../lib/quickGame.ts";
+import { useReportOutcome } from "./useReportOutcome.ts";
 import { fetchQuickGame, submitQuickGame } from "../services/mockChallenges.ts";
 import type {
   LocalQuickGame,
@@ -41,6 +42,20 @@ export function useQuickGame(classroomId: string) {
   const startedAtRef = useRef(0);
   const questionStartRef = useRef(0);
   const finishedRef = useRef(true);
+  useReportOutcome(phase === "finished", () => {
+    const answers = statsRef.current.answers;
+    const totalMs = answers.reduce((sum, a) => sum + a.response_ms, 0);
+    return {
+      level: null,
+      completed: true,
+      metrics: {
+        correct: statsRef.current.correct,
+        total: answers.length,
+        avg_response_ms: answers.length === 0 ? 0 : Math.round(totalMs / answers.length),
+        best_combo: statsRef.current.bestCombo,
+      },
+    };
+  });
 
   const finish = useEffectEvent((activeGame: LocalQuickGame) => {
     if (finishedRef.current) return;

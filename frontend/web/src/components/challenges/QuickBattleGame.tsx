@@ -1,5 +1,6 @@
 import { Flame, RotateCcw, Timer, Trophy, Zap } from "lucide-react";
 import { comboMultiplier } from "../../lib/quickGame.ts";
+import { useGameSession } from "../../hooks/useGameSession.ts";
 import { useQuickGame } from "../../hooks/useQuickGame.ts";
 import type { AnswerFeedback } from "../../hooks/useQuickGame.ts";
 import { ChallengeCard, PRIMARY_BUTTON } from "./ChallengeCard.tsx";
@@ -41,6 +42,7 @@ function ComboChip({ combo }: { combo: number }) {
 export function QuickBattleGame({ classroomId }: QuickBattleGameProps) {
   const { phase, game, question, index, remainingMs, stats, feedback, result, start, answer } =
     useQuickGame(classroomId);
+  const { hideTimers } = useGameSession();
 
   const totalMs = (game?.duration_seconds ?? 1) * 1000;
   const fraction = Math.max(0, Math.min(1, remainingMs / totalMs));
@@ -96,9 +98,11 @@ export function QuickBattleGame({ classroomId }: QuickBattleGameProps) {
                 style={{ width: `${fraction * 100}%` }}
               />
             </div>
-            <span className="w-8 text-right text-sm font-bold text-slate-900 tabular-nums dark:text-white">
-              {seconds}s
-            </span>
+            {!hideTimers && (
+              <span className="w-8 text-right text-sm font-bold text-slate-900 tabular-nums dark:text-white">
+                {seconds}s
+              </span>
+            )}
           </div>
 
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">

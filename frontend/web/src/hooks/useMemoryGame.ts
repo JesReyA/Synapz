@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { MISMATCH_DELAY_MS, createMemory, flip, isLocked, resolveMismatch } from "../lib/games/memory.ts";
+import { MEMORY_LEVELS, MISMATCH_DELAY_MS, createMemory, flip, isLocked, resolveMismatch } from "../lib/games/memory.ts";
 import type { MemoryDifficulty, MemoryState } from "../types/memory.ts";
+import { useGameSession } from "./useGameSession.ts";
 import { useGameTimer } from "./useGameTimer.ts";
+import { useReportOutcome } from "./useReportOutcome.ts";
 
 export interface MemoryGameApi {
   difficulty: MemoryDifficulty;
@@ -19,14 +21,24 @@ export interface MemoryGameApi {
 
 /** Estado, espera del par fallido y cronómetro del Memorama. */
 export function useMemoryGame(): MemoryGameApi {
-  const [difficulty, setDifficulty] = useState<MemoryDifficulty>("facil");
-  const [state, setState] = useState<MemoryState>(() => createMemory("facil"));
+  const { recommendedLevel } = useGameSession();
+  const initialLevel: MemoryDifficulty = recommendedLevel ?? "facil";
+  const [difficulty, setDifficulty] = useState<MemoryDifficulty>(initialLevel);
+  const [state, setState] = useState<MemoryState>(() => createMemory(initialLevel));
   const [started, setStarted] = useState(false);
 
   const finished = state.status === "won";
   const locked = isLocked(state);
   const timer = useGameTimer(started && !finished);
   const resetTimer = timer.reset;
+  useReportOutcome(finished, () => {
+    const { rows, cols } = MEMORY_LEVELS[difficulty];
+    return {
+      level: difficulty,
+      completed: true,
+      metrics: { attempts: state.attempts, pairs: (rows * cols) / 2, elapsed_s: timer.elapsed },
+    };
+  });
 
   // Con un par fallido a la vista, lo oculta tras la espera. El cleanup cancela
   // la espera al reiniciar, cambiar de nivel o desmontar.

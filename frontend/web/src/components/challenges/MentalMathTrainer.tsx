@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Brain, Lightbulb, Play, RotateCcw, Sparkles } from "lucide-react";
+import { useGameSession } from "../../hooks/useGameSession.ts";
 import { useMentalTrainer } from "../../hooks/useMentalTrainer.ts";
 import type { MentalTestResult } from "../../types/challenges.ts";
 import { ChallengeCard, PRIMARY_BUTTON } from "./ChallengeCard.tsx";
@@ -105,6 +106,7 @@ function InfoList({ icon, title, items }: { icon: React.ReactNode; title: string
 
 export function MentalMathTrainer() {
   const t = useMentalTrainer();
+  const { hideTimers } = useGameSession();
   const limit = t.question?.time_limit_ms ?? t.level?.time_limit_ms ?? 1;
   const fraction = Math.max(0, Math.min(1, t.remainingMs / limit));
 
@@ -135,7 +137,8 @@ export function MentalMathTrainer() {
               Nivel {t.level.level}: {t.level.label}
             </span>
             <span>
-              Pregunta {t.asked}/{t.questionsPerLevel} · {t.level.time_limit_ms / 1000}s por suma
+              Pregunta {t.asked}/{t.questionsPerLevel}
+              {hideTimers ? "" : ` · ${t.level.time_limit_ms / 1000}s por suma`}
             </span>
           </div>
 
